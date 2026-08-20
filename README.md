@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+
 # PRAHARI — AI Sentinel for Safer Roads
 
 **Smart India Hackathon 2026 | Theme: Transportation and Logistics**
@@ -24,18 +26,18 @@ routing into a single intelligence layer for Indian cities.
 2. **Predict** — An ML model scores accident risk per zone using historical
    accident data, weather, traffic, and live defect density.
 3. **Respond** — When an accident is reported, the routing engine finds the
-   fastest *and safest* path for an ambulance — not just the shortest one.
+   fastest _and safest_ path for an ambulance — not just the shortest one.
 
 ## Tech Stack
 
-| Layer | Tech |
-|---|---|
-| Frontend | React (Vite) + Tailwind CSS v4 + Leaflet.js |
-| Backend | FastAPI (Python) |
-| ML — Risk Model | scikit-learn / XGBoost |
-| ML — Defect Classifier | PyTorch / TensorFlow (transfer learning) |
-| Routing Engine | NetworkX + OSMnx (Dijkstra/A*) |
-| Database | PostgreSQL (+ PostGIS) or MongoDB |
+| Layer                  | Tech                                        |
+| ---------------------- | ------------------------------------------- |
+| Frontend               | React (Vite) + Tailwind CSS v4 + Leaflet.js |
+| Backend                | FastAPI (Python)                            |
+| ML — Risk Model        | scikit-learn / XGBoost                      |
+| ML — Defect Classifier | PyTorch / TensorFlow (transfer learning)    |
+| Routing Engine         | NetworkX + OSMnx (Dijkstra/A\*)             |
+| Database               | PostgreSQL (+ PostGIS) or MongoDB           |
 
 ## Repository Structure
 
@@ -52,6 +54,7 @@ prahari-ai/
 ## Getting Started
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -59,6 +62,7 @@ npm run dev
 ```
 
 ### Backend
+
 ```bash
 cd backend
 python -m venv venv
@@ -68,6 +72,7 @@ uvicorn main:app --reload
 ```
 
 ### ML Model
+
 ```bash
 cd ml-model
 pip install -r requirements.txt
@@ -75,6 +80,7 @@ python train_risk_model.py
 ```
 
 ### Routing Engine
+
 ```bash
 cd routing-engine
 pip install -r requirements.txt
@@ -86,14 +92,14 @@ your own values. Never commit `.env` files.
 
 ## Team — COMMAND + WIN
 
-| Name | Role |
-|---|---|
-| TBD | Team Lead / Backend |
-| TBD | ML — Risk Prediction |
-| TBD | Routing / Algorithms |
-| TBD | Frontend — Dashboard |
-| TBD | Frontend — Alerts & UI |
-| TBD | Data & Documentation |
+| Name | Role                   |
+| ---- | ---------------------- |
+| TBD  | Team Lead / Backend    |
+| TBD  | ML — Risk Prediction   |
+| TBD  | Routing / Algorithms   |
+| TBD  | Frontend — Dashboard   |
+| TBD  | Frontend — Alerts & UI |
+| TBD  | Data & Documentation   |
 
 ## License
 
