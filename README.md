@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 # PRAHARI — AI Sentinel for Safer Roads
 
 **Smart India Hackathon 2026 | Theme: Transportation and Logistics**
