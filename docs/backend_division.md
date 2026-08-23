@@ -4,7 +4,7 @@ Based on the provided architecture and modules, the backend work has been divide
 
 ## Recommended Stack
 *   **Primary Backend:** Node.js + Express
-*   **Database:** PostgreSQL with PostGIS extension (Crucial for location-based queries and routing).
+*   **Database:** MongoDB (Crucial to utilize GeoJSON and `2dsphere` indexes for location-based queries).
 *   **Microservice (ML & Routing):** Python (FastAPI) for Computer Vision, Risk Prediction, and Graph Routing algorithms (Dijkstra/A*).
 
 ---
@@ -12,19 +12,19 @@ Based on the provided architecture and modules, the backend work has been divide
 ## 🧑‍💻 Person 1: Citizen Complaints & Authority Workflow (Modules 1, 2, 5)
 **Focus:** User management, AI infrastructure defect reporting workflow, automatic department routing, and complaint resolution tracking.
 
-### Schemas
+### Schemas (Mongoose/MongoDB)
 *   **User:**
-    *   `id`, `name`, `email`, `password_hash`, `role` (CITIZEN, AUTHORITY, EMERGENCY), `department_id` (nullable), `created_at`
+    *   `_id`, `name`, `email`, `password_hash`, `role` (CITIZEN, AUTHORITY, EMERGENCY), `department_id` (ObjectId, ref: Department, nullable), `created_at`
 *   **Department:**
-    *   `id`, `name` (e.g., Road, Electrical, Sanitation, Public Works), `contact_email`
+    *   `_id`, `name` (e.g., Road, Electrical, Sanitation, Public Works), `contact_email`
 *   **Complaint:**
-    *   `id`, `citizen_id` (FK User)
+    *   `_id`, `citizen_id` (ObjectId, ref: User)
     *   `photo_url`
     *   `defect_type` (POTHOLE, BROKEN_STREETLIGHT, GARBAGE, DRAINAGE, OTHER)
     *   `severity` (LOW, MEDIUM, HIGH, CRITICAL)
-    *   `location` (Geometry/Point - Latitude/Longitude)
+    *   `location` (GeoJSON Point - coordinates: [longitude, latitude])
     *   `status` (REPORTED, AI_VERIFIED, ASSIGNED, WORK_IN_PROGRESS, RESOLVED)
-    *   `assigned_department_id` (FK Department)
+    *   `assigned_department_id` (ObjectId, ref: Department)
     *   `created_at`, `updated_at`, `resolved_at`
 
 ### Routes
@@ -47,15 +47,15 @@ Based on the provided architecture and modules, the backend work has been divide
 ## 🧑‍💻 Person 2: Emergency Intelligent Routing & Entities (Module 4)
 **Focus:** Managing emergency entities (hospitals, ambulances, accidents) and calculating the safest and fastest route dynamically.
 
-### Schemas
+### Schemas (Mongoose/MongoDB)
 *   **Accident:**
-    *   `id`, `reported_by` (FK User), `location` (Geometry/Point), `severity`, `status` (REPORTED, RESPONDING, CLEARED), `created_at`
+    *   `_id`, `reported_by` (ObjectId, ref: User), `location` (GeoJSON Point), `severity`, `status` (REPORTED, RESPONDING, CLEARED), `created_at`
 *   **Ambulance:**
-    *   `id`, `vehicle_number`, `current_location` (Geometry/Point), `status` (AVAILABLE, DISPATCHED, MAINTENANCE), `hospital_id`
+    *   `_id`, `vehicle_number`, `current_location` (GeoJSON Point), `status` (AVAILABLE, DISPATCHED, MAINTENANCE), `hospital_id` (ObjectId, ref: Hospital)
 *   **Hospital:**
-    *   `id`, `name`, `location` (Geometry/Point), `capacity_status`
+    *   `_id`, `name`, `location` (GeoJSON Point), `capacity_status`
 *   **RoadBlockage:**
-    *   `id`, `location` (Geometry/Point or LineString), `reason`, `reported_at`, `is_active`
+    *   `_id`, `location` (GeoJSON Point or LineString), `reason`, `reported_at`, `is_active`
 
 ### Routes
 *   **Accidents:**
@@ -63,7 +63,7 @@ Based on the provided architecture and modules, the backend work has been divide
     *   `GET /api/accidents` - List active accidents for the Emergency Dashboard.
     *   `PATCH /api/accidents/:id/status` - Update accident status.
 *   **Emergency Resources:**
-    *   `GET /api/ambulances` - Find nearby available ambulances using PostGIS distance queries.
+    *   `GET /api/ambulances` - Find nearby available ambulances using MongoDB geospatial queries (e.g., `$near`).
     *   `PATCH /api/ambulances/:id/location` - Real-time GPS ping endpoint for ambulances.
     *   `GET /api/hospitals` - List nearby hospitals.
 *   **Intelligent Routing Engine:**
@@ -80,11 +80,11 @@ Based on the provided architecture and modules, the backend work has been divide
 ## 🧑‍💻 Person 3: ML Services, Risk Mapping & Analytics (Module 3 & Dashboards)
 **Focus:** Connecting the Node.js backend to Python ML microservices, aggregating data for the Dynamic Road Risk Map, and providing analytics for the authority dashboard.
 
-### Schemas
+### Schemas (Mongoose/MongoDB)
 *   **RiskZone / RoadSegment:**
-    *   `id`, `geometry` (LineString/Polygon)
+    *   `_id`, `geometry` (GeoJSON LineString/Polygon)
     *   `risk_score` (LOW, MEDIUM, HIGH)
-    *   `factors` (JSON containing weight of weather, defects, traffic)
+    *   `factors` (Object containing weight of weather, defects, traffic)
     *   `last_calculated_at`
 *   **HistoricalData:**
     *   Schema to store/cache weather, traffic density, and historical government accident datasets.
