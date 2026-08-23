@@ -14,3 +14,11 @@ export const SEVERITY = {
 };
 
 export const SEVERITY_ENUM = Object.values(SEVERITY);
+
+export const AMBULANCE_STATUS = {
+    AVAILABLE: "AVAILABLE",
+    DISPATCHED: "DISPATCHED",
+    MAINTENANCE: "MAINTENANCE"
+};
+
+export const AMBULANCE_STATUS_ENUM = Object.values(AMBULANCE_STATUS);
