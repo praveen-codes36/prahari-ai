@@ -7,6 +7,15 @@ Based on the provided architecture and modules, the backend work has been divide
 *   **Database:** MongoDB (Crucial to utilize GeoJSON and `2dsphere` indexes for location-based queries).
 *   **Microservice (ML & Routing):** Python (FastAPI) for Computer Vision, Risk Prediction, and Graph Routing algorithms (Dijkstra/A*).
 
+### Libraries & Dependencies
+*   **Core / Server:** `express`, `cors`, `dotenv`
+*   **Database:** `mongoose`
+*   **Authentication & Security:** `jsonwebtoken`, `bcryptjs`
+*   **File Uploads:** `multer`, `cloudinary`
+*   **Validation:** `zod`
+*   **Utilities (Internal APIs):** `axios`
+*   **Development Tools:** `nodemon`, `morgan`
+
 ---
 
 ## 🧑‍💻 Person 1: Citizen Complaints & Authority Workflow (Modules 1, 2, 5)
