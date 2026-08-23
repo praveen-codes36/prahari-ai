@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   MapPin, AlertTriangle, Lightbulb, Trash2, Droplets, Siren, Building2,
   Radar, Clock, Camera, X, ShieldCheck, CheckCircle2, Loader2, Navigation,
@@ -80,15 +80,17 @@ function Switch({ checked, onChange, color = C.saffron }) {
     <button
       type="button"
       onClick={() => onChange(!checked)}
+      aria-pressed={checked}
       style={{ background: checked ? color : C.panelBorder }}
-      className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
+      className="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
     >
       <span
         style={{
-          transform: checked ? "translateX(16px)" : "translateX(2px)",
+          left: checked ? "18px" : "2px",
           background: C.void,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
         }}
-        className="absolute top-[2px] w-4 h-4 rounded-full transition-transform duration-200 shadow-md"
+        className="absolute top-0.5 h-4 w-4 rounded-full transition-all duration-200"
       />
     </button>
   );
@@ -97,7 +99,7 @@ function Switch({ checked, onChange, color = C.saffron }) {
 function Logo({ size = 32 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
+      <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
         <div
           style={{ border: `1.5px solid ${C.saffronDim}`, animation: "sweep 4s linear infinite" }}
           className="absolute inset-0 rounded-full border-t-transparent"
@@ -122,7 +124,7 @@ function Field({ icon: Icon, ...props }) {
       style={{ background: C.panelRaised, border: `1px solid ${C.panelBorder}` }}
       className="flex items-center gap-2.5 rounded-lg px-3 py-2.5"
     >
-      <Icon size={15} style={{ color: C.textFaint }} className="flex-shrink-0" />
+      <Icon size={15} style={{ color: C.textFaint }} className="shrink-0" />
       <input
         {...props}
         style={{ color: C.textPrimary, fontFamily: "Inter" }}
@@ -158,7 +160,7 @@ const TOAST_COLOR = { success: C.riskLow, error: C.riskHigh, info: C.cyan };
 
 function ToastStack({ toasts, onDismiss }) {
   return (
-    <div className="fixed top-4 right-4 z-[60] flex flex-col gap-2 w-72">
+    <div className="fixed top-4 right-4 z-60 flex flex-col gap-2 w-72">
       {toasts.map((t) => {
         const Icon = TOAST_ICON[t.type];
         const color = TOAST_COLOR[t.type];
@@ -168,7 +170,7 @@ function ToastStack({ toasts, onDismiss }) {
             className="fade-up rounded-lg px-3 py-2.5 flex items-start gap-2.5"
             style={{ background: C.panelRaised, border: `1px solid ${C.panelBorder}`, borderLeft: `3px solid ${color}`, boxShadow: "0 10px 28px rgba(0,0,0,0.5)" }}
           >
-            <Icon size={15} style={{ color }} className="flex-shrink-0 mt-0.5" />
+            <Icon size={15} style={{ color }} className="shrink-0 mt-0.5" />
             <span style={{ color: C.textPrimary, fontFamily: "Inter" }} className="text-[12px] flex-1 leading-snug">{t.message}</span>
             <button onClick={() => onDismiss(t.id)}><X size={12} style={{ color: C.textFaint }} /></button>
           </div>
@@ -183,7 +185,7 @@ function LandingPage({ goTo }) {
     <div className="w-full h-full flex flex-col items-center justify-center px-6 relative overflow-hidden" style={{ background: C.void }}>
       <div
         style={{ background: `radial-gradient(circle, ${C.saffron}14, transparent 70%)` }}
-        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
+        className="absolute w-150 h-150 rounded-full pointer-events-none"
       />
       <div className="relative z-10 flex flex-col items-center text-center max-w-lg">
         <Logo size={44} />
@@ -246,7 +248,7 @@ function LoginPage({ goTo, onLogin, accounts, addToast, prefillEmail }) {
       setLoading(false);
       if (acc) {
         addToast("success", `Welcome back, ${acc.name.split(" ")[0]}.`);
-        onLogin(acc, remember);
+        onLogin(acc);
       } else {
         addToast("error", "Invalid email or password.");
       }
@@ -429,7 +431,7 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
 
   return (
     <div className="w-full h-full flex flex-col" style={{ background: C.void }}>
-      <header style={{ borderBottom: `1px solid ${C.hairline}`, background: C.panel }} className="flex items-center justify-between px-4 py-2.5 flex-shrink-0">
+      <header style={{ borderBottom: `1px solid ${C.hairline}`, background: C.panel }} className="flex items-center justify-between px-4 py-2.5 shrink-0">
         <Logo size={30} />
 
         <nav className="hidden md:flex items-center gap-1" style={{ background: C.panelRaised, border: `1px solid ${C.panelBorder}` }}>
@@ -470,8 +472,8 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
                 <div style={{ color: C.textFaint, fontFamily: "Inter" }} className="text-[10px] uppercase tracking-wider px-2 py-1">Notifications</div>
                 {notifications.length === 0 && <div style={{ color: C.textFaint }} className="text-[11px] px-2 py-3">No notifications yet.</div>}
                 {notifications.map((n, i) => (
-                  <div key={i} className="px-2 py-2 rounded-md hover:bg-white/[0.03] flex gap-2 items-start">
-                    <span style={{ background: C.saffron }} className="w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0" />
+                  <div key={i} className="px-2 py-2 rounded-md hover:bg-white/3 flex gap-2 items-start">
+                    <span style={{ background: C.saffron }} className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" />
                     <span style={{ color: C.textMuted, fontFamily: "Inter" }} className="text-[11px] leading-snug">{n}</span>
                   </div>
                 ))}
@@ -491,7 +493,7 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
                   <div style={{ color: C.textPrimary, fontFamily: "Inter" }} className="text-[12px] font-semibold truncate">{user.name}</div>
                   <div style={{ color: C.textFaint, fontFamily: "JetBrains Mono" }} className="text-[9.5px] truncate">{user.email}</div>
                 </div>
-                <button onClick={onLogout} className="w-full flex items-center gap-2 px-2.5 py-2 mt-1 rounded-md hover:bg-white/[0.03] text-left">
+                <button onClick={onLogout} className="w-full flex items-center gap-2 px-2.5 py-2 mt-1 rounded-md hover:bg-white/3 text-left">
                   <LogOut size={13} style={{ color: C.riskHigh }} />
                   <span style={{ color: C.riskHigh, fontFamily: "Inter" }} className="text-[11.5px] font-medium">Log Out</span>
                 </button>
@@ -502,7 +504,7 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-3 p-3 min-h-0 overflow-y-auto">
-        <div style={{ background: C.panel, border: `1px solid ${C.hairline}` }} className="relative flex-1 rounded-xl overflow-hidden min-h-[420px] lg:min-h-0">
+        <div style={{ background: C.panel, border: `1px solid ${C.hairline}` }} className="relative flex-1 rounded-xl overflow-hidden min-h-105 lg:min-h-0">
           <div className="absolute top-3 left-3 z-20 flex gap-1.5 flex-wrap max-w-[85%]">
             {[
               { key: "heatmap", label: "Risk Heatmap", color: C.riskHigh },
@@ -628,7 +630,7 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
           )}
         </div>
 
-        <aside className="w-full lg:w-80 flex-shrink-0 flex flex-col gap-3 min-h-0">
+        <aside className="w-full lg:w-80 shrink-0 flex flex-col gap-3 min-h-0">
           <div className="grid grid-cols-2 gap-2">
             <StatCard label="Total Reports" value={counts.total} icon={Eye} accent={C.saffron} />
             <StatCard label="Pending" value={counts.pending} icon={Clock} accent={C.cyan} />
@@ -636,7 +638,7 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
             <StatCard label="High-Risk Zones" value={counts.highRisk} icon={AlertTriangle} accent={C.riskHigh} />
           </div>
 
-          <div style={{ background: C.panel, border: `1px solid ${C.hairline}` }} className="rounded-xl flex-1 flex flex-col min-h-[280px] overflow-hidden">
+          <div style={{ background: C.panel, border: `1px solid ${C.hairline}` }} className="rounded-xl flex-1 flex flex-col min-h-70 overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2.5" style={{ borderBottom: `1px solid ${C.hairline}` }}>
               <span style={{ color: C.textPrimary, fontFamily: "Chakra Petch" }} className="text-[13px] font-semibold">Recent Reports</span>
               <div className="relative">
@@ -652,14 +654,14 @@ function DashboardPage({ user, onLogout, addToast, notifications, addNotificatio
                 const meta = DEFECT_META[r.type];
                 const Icon = meta.icon;
                 return (
-                  <button key={r.id} onClick={() => setSelectedMarker(r.id)} style={{ background: selectedMarker === r.id ? C.panelRaised : "transparent", border: `1px solid ${selectedMarker === r.id ? C.panelBorder : "transparent"}` }} className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-left hover:bg-white/[0.03] transition-colors">
-                    <div style={{ background: `${meta.color}18` }} className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0">
+                  <button key={r.id} onClick={() => setSelectedMarker(r.id)} style={{ background: selectedMarker === r.id ? C.panelRaised : "transparent", border: `1px solid ${selectedMarker === r.id ? C.panelBorder : "transparent"}` }} className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-left hover:bg-white/3 transition-colors">
+                    <div style={{ background: `${meta.color}18` }} className="w-7 h-7 rounded-md flex items-center justify-center shrink-0">
                       <Icon size={13} color={meta.color} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span style={{ color: C.textPrimary, fontFamily: "Inter" }} className="text-[11.5px] font-medium truncate">{meta.label}</span>
-                        {r.status === "verified" && <Loader2 size={10} className="animate-spin flex-shrink-0" style={{ color: C.cyan }} />}
+                        {r.status === "verified" && <Loader2 size={10} className="animate-spin shrink-0" style={{ color: C.cyan }} />}
                       </div>
                       <span style={{ color: C.textFaint, fontFamily: "JetBrains Mono" }} className="text-[9.5px]">{r.id} · {r.time}</span>
                     </div>
@@ -727,7 +729,7 @@ export default function PrahariApp() {
     setPage(p);
   };
 
-  const handleLogin = (acc, remember) => {
+  const handleLogin = (acc) => {
     setUser(acc);
     setPage("dashboard");
   };
