@@ -22,3 +22,11 @@ export const AMBULANCE_STATUS = {
 };
 
 export const AMBULANCE_STATUS_ENUM = Object.values(AMBULANCE_STATUS);
+
+export const HOSPITAL_CAPACITY_STATUS = {
+    NORMAL: "NORMAL",
+    BUSY: "BUSY",
+    FULL: "FULL"
+};
+
+export const HOSPITAL_CAPACITY_STATUS_ENUM = Object.values(HOSPITAL_CAPACITY_STATUS);
