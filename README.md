@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 # PRAHARI — AI Sentinel for Safer Roads
 
 **Smart India Hackathon 2026 | Theme: Transportation and Logistics**
@@ -43,12 +41,13 @@ routing into a single intelligence layer for Indian cities.
 
 ```
 prahari-ai/
-├── frontend/          # React dashboard (Person 4, 5)
-├── backend/           # FastAPI APIs (Person 2)
-├── ml-model/           # Risk prediction + defect classifier (Person 1)
-├── routing-engine/     # Road graph + routing logic (Person 3)
-├── docs/                # PPT, architecture diagrams, PS document
+├── frontend/ # React dashboard (Person 4, 5)
+├── backend/ # FastAPI APIs (Person 2)
+├── ml-model/ # Risk prediction + defect classifier (Person 1)
+├── routing-engine/ # Road graph + routing logic (Person 3)
+├── docs/ # PPT, architecture diagrams, PS document
 └── README.md
+
 ```
 
 ## Getting Started
