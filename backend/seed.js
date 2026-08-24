@@ -10,30 +10,22 @@ async function seed() {
     try {
         await connectDB();
 
-        const hospital = new Hospital({
-            name: "City General Hospital",
+        // Import the Accident model inline since we didn't add it at the top
+        const { Accident } = await import("./src/models/accident.model.js");
+
+        const accident = new Accident({
+            reported_by: new mongoose.Types.ObjectId(), // Dummy user ID
             location: {
                 type: "Point",
-                coordinates: [81.8500, 25.4400] // Near the test coordinates
+                coordinates: [81.8463, 25.4358] // The exact coordinates we've been using
             },
-            capacity_status: "NORMAL"
+            severity: "HIGH",
+            status: "REPORTED"
         });
 
-        await hospital.save();
-        console.log("Dummy Hospital created successfully!");
-
-        const ambulance = new Ambulance({
-            vehicle_number: "UP-70-AMB-108",
-            current_location: {
-                type: "Point",
-                coordinates: [81.8470, 25.4360] // Near the accident
-            },
-            status: "AVAILABLE",
-            hospital_id: hospital._id
-        });
-
-        await ambulance.save();
-        console.log("Dummy Ambulance created successfully!");
+        await accident.save();
+        console.log(`\n✅ Dummy Accident created successfully!`);
+        console.log(`👉 PLEASE COPY THIS ACCIDENT ID TO TEST THE DASHBOARD API: ${accident._id}\n`);
 
         mongoose.disconnect();
     } catch (error) {

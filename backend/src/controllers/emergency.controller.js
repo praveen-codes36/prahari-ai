@@ -143,3 +143,84 @@ export const getEmergencyRoute = async (req, res) => {
         });
     }
 };
+
+
+// @desc    Get aggregated data for the Emergency Response Dashboard summary card
+// @route   GET /api/emergency/dashboard/:accidentId
+export const getEmergencyDashboardSummary = async (req, res) => {
+    try {
+        const { accidentId } = req.params;
+        const cleanAccidentId = accidentId.trim();
+
+        const accident = await Accident.findById(cleanAccidentId);
+        if (!accident) {
+            throw new ApiError(404, "Accident not found");
+        }
+
+        const accidentLocation = accident.location.coordinates; // [longitude, latitude]
+
+        // MongoDB GeoNear Aggregation for Nearest Ambulance
+        const nearestAmbulanceResult = await Ambulance.aggregate([
+            {
+                $geoNear: {
+                    near: { type: "Point", coordinates: accidentLocation },
+                    distanceField: "distance_meters",
+                    maxDistance: 20000,
+                    query: { status: "AVAILABLE" },
+                    spherical: true
+                }
+            },
+            { $limit: 1 }
+        ]);
+
+        // MongoDB GeoNear Aggregation for Nearest Hospital
+        const nearestHospitalResult = await Hospital.aggregate([
+            {
+                $geoNear: {
+                    near: { type: "Point", coordinates: accidentLocation },
+                    distanceField: "distance_meters",
+                    maxDistance: 20000,
+                    spherical: true
+                }
+            },
+            { $limit: 1 }
+        ]);
+
+        const nearestAmbulance = nearestAmbulanceResult.length > 0 ? nearestAmbulanceResult[0] : null;
+        const nearestHospital = nearestHospitalResult.length > 0 ? nearestHospitalResult[0] : null;
+
+        const dashboardData = {
+            accident: {
+                id: accident._id,
+                location: accident.location,
+                severity: accident.severity,
+                status: accident.status,
+                reported_at: accident.createdAt
+            },
+            nearest_ambulance: nearestAmbulance ? {
+                id: nearestAmbulance._id,
+                vehicle_number: nearestAmbulance.vehicle_number,
+                distance_km: (nearestAmbulance.distance_meters / 1000).toFixed(2),
+                coordinates: nearestAmbulance.current_location.coordinates
+            } : null,
+            nearest_hospital: nearestHospital ? {
+                id: nearestHospital._id,
+                name: nearestHospital.name,
+                distance_km: (nearestHospital.distance_meters / 1000).toFixed(2),
+                coordinates: nearestHospital.location.coordinates
+            } : null,
+            current_traffic_level: "HIGH", // Mocked as per PDF spec
+            road_risk_level: "MEDIUM" // Mocked as per PDF spec
+        };
+
+        return res.status(200).json(new ApiResponse(200, dashboardData, "Dashboard summary fetched successfully"));
+
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            statusCode: error.statusCode || 500,
+            message: error.message || "Error fetching dashboard summary",
+            success: false,
+            errors: error.errors || []
+        });
+    }
+};
