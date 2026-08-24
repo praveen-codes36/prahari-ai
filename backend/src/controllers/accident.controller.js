@@ -59,7 +59,7 @@ export const getActiveAccidents = async (req, res) => {
     try {
         // Find accidents that are not CLEARED
         const activeAccidents = await Accident.find({ status: { $ne: "CLEARED" } })
-            .populate("reported_by", "name email") // Populates Person 1 User data
+            // .populate("reported_by", "name email") // Populates Person 1 User data (Temporarily disabled until User model exists)
             .sort({ createdAt: -1 });
 
         return res.status(200).json(new ApiResponse(200, activeAccidents, "Active accidents retrieved"));
