@@ -41,9 +41,8 @@ export const getEmergencyRoute = async (req, res) => {
             }
         });
 
-        if (!nearestAmbulance) {
-            throw new ApiError(404, "No available ambulances found nearby");
-        }
+        // We won't throw an error if ambulance is not found.
+        // We will just return null for ambulance details and still show the route to the hospital.
 
         // 3. Find nearest hospital
         const nearestHospital = await Hospital.findOne({
@@ -82,51 +81,65 @@ export const getEmergencyRoute = async (req, res) => {
 
         // 6. Send Graph Data to Python Routing Engine Microservice
         const routingPayload = {
-            ambulance: {
-                id: nearestAmbulance._id,
-                coordinates: nearestAmbulance.current_location.coordinates
+            accident_location: {
+                lat: accLat,
+                lng: accLon
             },
-            accident: {
-                coordinates: accidentLocation
+            hospital_location: {
+                lat: nearestHospital.location.coordinates[1],
+                lng: nearestHospital.location.coordinates[0]
             },
-            hospital: {
-                id: nearestHospital._id,
-                coordinates: nearestHospital.location.coordinates
-            },
-            blockages: activeBlockages.map(b => b.location.coordinates),
-            defects: defects,       // Supplied by Person 1
-            riskZones: riskZones    // Supplied by Person 3
+            blockages: activeBlockages.map(b => ({
+                location: {
+                    lat: b.location.coordinates[1],
+                    lng: b.location.coordinates[0]
+                },
+                reason: b.reason || "Unknown Blockage"
+            })),
+            potholes: defects.map(d => ({
+                location: { lat: d.location.coordinates[1], lng: d.location.coordinates[0] },
+                severity: d.severity
+            })),
+            risk_zones: riskZones.map(r => ({
+                location: { lat: r.location.coordinates[1], lng: r.location.coordinates[0] },
+                risk_score: r.risk_score
+            }))
         };
 
         let routeResult;
         
         try {
-            // Uncomment this when the Python FastAPI server is running
-            // const pythonResponse = await axios.post("http://localhost:5000/api/route", routingPayload);
-            // routeResult = pythonResponse.data;
+            // Calling the Python FastAPI server
+            const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://127.0.0.1:8000";
+            const pythonResponse = await axios.post(`${ROUTING_ENGINE_URL}/route`, routingPayload);
+            routeResult = pythonResponse.data;
             
-            // Mocking the Python engine response for now so the API works
-            routeResult = {
-                fastest_safest_route_coordinates: [
-                    nearestAmbulance.current_location.coordinates,
-                    accidentLocation,
-                    nearestHospital.location.coordinates
-                ],
-                distance_km: 5.2,
-                eta_minutes: 12,
-                message: "This is a mocked response until the Python Routing microservice is connected."
+            // Adding nearest ambulance details for the frontend
+            routeResult.nearest_ambulance = nearestAmbulance ? {
+                id: nearestAmbulance._id,
+                vehicle_number: nearestAmbulance.vehicle_number,
+                coordinates: nearestAmbulance.current_location.coordinates
+            } : null;
+            routeResult.nearest_hospital = {
+                id: nearestHospital._id,
+                name: nearestHospital.name,
+                coordinates: nearestHospital.location.coordinates
             };
+            
         } catch (microserviceError) {
             console.error("Python routing engine failed:", microserviceError.message);
-            throw new ApiError(500, "Routing engine microservice is unreachable");
+            throw new ApiError(500, "Routing engine microservice is unreachable. Make sure the FastAPI server is running on port 8000.");
         }
 
         // 7. Return the final recommended route
         return res.status(200).json(new ApiResponse(200, routeResult, "Emergency route calculated successfully"));
 
     } catch (error) {
-        return res.status(error.statusCode || 500).json(
-            new ApiError(error.statusCode || 500, error.message || "Error calculating emergency route", [], error.stack)
-        );
+        return res.status(error.statusCode || 500).json({
+            statusCode: error.statusCode || 500,
+            message: error.message || "Error calculating emergency route",
+            success: false,
+            errors: error.errors || []
+        });
     }
 };

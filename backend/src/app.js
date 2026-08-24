@@ -20,4 +20,10 @@ app.get('/', (req, res) => {
   res.send('Welcome to Prahari-AI')
 })
 
+// routes import
+import emergencyRouter from "./routes/emergency.route.js"
+
+// routes declaration
+app.use("/api/emergency", emergencyRouter)
+
 export default app
