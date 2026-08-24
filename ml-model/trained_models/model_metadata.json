@@ -1,0 +1,124 @@
+{
+  "project": "RoadGuard AI",
+  "target_city": "Prayagraj, Uttar Pradesh, India",
+  "geographic_bounds": {
+    "min_lat": 25.3,
+    "max_lat": 25.55,
+    "min_lng": 81.7,
+    "max_lng": 82.0,
+    "center_lat": 25.4358,
+    "center_lng": 81.8463
+  },
+  "models": {
+    "xgboost_risk_predictor": {
+      "file": "risk_predictor_xgboost.joblib",
+      "metrics": {
+        "test_rmse": 0.0413,
+        "test_mae": 0.0328,
+        "test_r2": 0.7582,
+        "roc_auc": 0.9463
+      },
+      "parameters": {
+        "objective": "reg:squarederror",
+        "base_score": null,
+        "booster": null,
+        "callbacks": null,
+        "colsample_bylevel": null,
+        "colsample_bynode": null,
+        "colsample_bytree": 0.85,
+        "device": null,
+        "early_stopping_rounds": null,
+        "enable_categorical": false,
+        "eval_metric": null,
+        "feature_types": null,
+        "feature_weights": null,
+        "gamma": null,
+        "grow_policy": null,
+        "importance_type": null,
+        "interaction_constraints": null,
+        "learning_rate": 0.04,
+        "max_bin": null,
+        "max_cat_threshold": null,
+        "max_cat_to_onehot": null,
+        "max_delta_step": null,
+        "max_depth": 6,
+        "max_leaves": null,
+        "min_child_weight": null,
+        "missing": NaN,
+        "monotone_constraints": null,
+        "multi_strategy": null,
+        "n_estimators": 250,
+        "n_jobs": -1,
+        "num_parallel_tree": null,
+        "random_state": 42,
+        "reg_alpha": null,
+        "reg_lambda": null,
+        "sampling_method": null,
+        "scale_pos_weight": null,
+        "subsample": 0.85,
+        "tree_method": null,
+        "validate_parameters": null,
+        "verbosity": null
+      }
+    },
+    "random_forest_risk_predictor": {
+      "file": "risk_predictor_rf.joblib",
+      "metrics": {
+        "test_rmse": 0.0428,
+        "test_mae": 0.0339,
+        "test_r2": 0.7408,
+        "roc_auc": 0.9375
+      }
+    }
+  },
+  "top_feature_importances": {
+    "weather_Clear": 0.3092012107372284,
+    "defect_severity_index": 0.20313936471939087,
+    "nearby_defect_count_500m": 0.0745997279882431,
+    "speed_limit": 0.05675221234560013,
+    "road_type_National Highway": 0.05503317341208458,
+    "weather_Monsoon Overcast": 0.040016885846853256,
+    "weather_Dense Fog / Smog": 0.03889237344264984,
+    "road_type_Bridge / Flyover": 0.037215299904346466,
+    "time_of_day_Afternoon Off-Peak": 0.025707870721817017,
+    "weather_Rain": 0.024311808869242668
+  },
+  "classes_risk_level": {
+    "Low": [
+      0.0,
+      0.3
+    ],
+    "Medium": [
+      0.3,
+      0.55
+    ],
+    "High": [
+      0.55,
+      0.75
+    ],
+    "Critical": [
+      0.75,
+      1.0
+    ]
+  },
+  "defect_categories": [
+    "Pothole",
+    "Streetlight Defect",
+    "Garbage Accumulation",
+    "Drainage Issues"
+  ],
+  "defect_classifier_mobilenetv2": {
+    "file": "defect_classifier_mobilenetv2.pt",
+    "architecture": "MobileNetV2",
+    "num_classes": 4,
+    "classes": [
+      "Pothole",
+      "Streetlight Defect",
+      "Garbage Accumulation",
+      "Drainage Issues"
+    ],
+    "best_val_accuracy": 1.0,
+    "training_epochs": 8,
+    "device_trained_on": "cpu"
+  }
+}
