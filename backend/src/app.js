@@ -27,6 +27,7 @@ import ambulancesRouter from "./routes/ambulances.route.js"
 import hospitalsRouter from "./routes/hospitals.route.js"
 import roadBlockagesRouter from "./routes/road_blockages.route.js"
 import roadHealthRouter from "./routes/road_health.route.js"
+import repairPriorityRouter from "./routes/repair_priority.route.js"
 
 // routes declaration
 app.use("/api/emergency", emergencyRouter)
@@ -37,5 +38,8 @@ app.use("/api/blockages", roadBlockagesRouter)
 
 // Mount the Road Health router at /api (the router defines /roads/... and /internal/... internally)
 app.use("/api", roadHealthRouter)
+
+// Mount the Repair Priority router at /api
+app.use("/api", repairPriorityRouter)
 
 export default app

@@ -120,6 +120,26 @@ async function runTests() {
         console.log(`✅ Success! Breakdown fetched: Potholes = ${getOneHealthRes.data.data.factors.potholes}\n`);
 
 
+        // 14. POST /api/internal/calculate-priority
+        console.log("Testing POST /api/internal/calculate-priority (MVP Formula) ...");
+        const calcPriorityRes = await axios.post(`${BASE_URL}/internal/calculate-priority`, {
+            road_segment_id: roadSegmentId,
+            factors: {
+                severity: "CRITICAL",
+                location_risk: 80,
+                accident_history: 5,
+                traffic: "HIGH",
+                population_usage: 5000
+            }
+        });
+        console.log(`✅ Success! Priority Score calculated: ${calcPriorityRes.data.data.priority_score}/100\n`);
+
+        // 15. GET /api/priority/queue
+        console.log("Testing GET /api/priority/queue ...");
+        const getQueueRes = await axios.get(`${BASE_URL}/priority/queue`);
+        console.log(`✅ Success! Found ${getQueueRes.data.data.length} priority queue records. Highest score: ${getQueueRes.data.data[0].priority_score}\n`);
+
+
         console.log("=====================================");
         console.log("🎉 ALL API TESTS PASSED SUCCESSFULLY!");
         console.log("=====================================");
