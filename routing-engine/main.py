@@ -6,8 +6,8 @@ from graph_manager import graph_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load the graph on startup
-    graph_manager.load_graph()
+    # Startup is now instant, no pre-loading required.
+    print("Starting RoadGuard AI Routing Engine...")
     yield
     # Clean up on shutdown if necessary
 

@@ -12,20 +12,27 @@ POTHOLE_PENALTY_SECONDS = {
 }
 
 def calculate_routes(request: RouteRequest):
-    G = graph_manager.G
+    # 1. Dynamically load the road network around the accident (3km radius)
+    G = graph_manager.get_graph_for_location(
+        request.accident_location.lat, 
+        request.accident_location.lng, 
+        radius=3000
+    )
+    
     if not G:
-        raise ValueError("Graph not loaded")
+        raise ValueError("Could not load road network for this location")
 
-    start_node = graph_manager.get_nearest_node(request.accident_location.lat, request.accident_location.lng)
-    end_node = graph_manager.get_nearest_node(request.hospital_location.lat, request.hospital_location.lng)
+    start_node = graph_manager.get_nearest_node(G, request.accident_location.lat, request.accident_location.lng)
+    end_node = graph_manager.get_nearest_node(G, request.hospital_location.lat, request.hospital_location.lng)
 
     if not start_node or not end_node:
-        raise ValueError("Could not find nearest nodes on the graph")
+        raise ValueError("Could not find nearest nodes on the graph. The hospital might be too far from the accident.")
 
     # 1. Calculate Fastest Route (Base Dijkstra on travel_time)
     try:
         fastest_path = nx.shortest_path(G, source=start_node, target=end_node, weight='travel_time')
-        fastest_eta = sum(ox.utils_graph.get_route_edge_attributes(G, fastest_path, 'travel_time')) / 60.0
+        fastest_route_gdf = ox.routing.route_to_gdf(G, fastest_path, weight='travel_time')
+        fastest_eta = fastest_route_gdf['travel_time'].sum() / 60.0
     except nx.NetworkXNoPath:
         fastest_path = []
         fastest_eta = 0.0
@@ -37,7 +44,7 @@ def calculate_routes(request: RouteRequest):
     
     # Inject Pothole Penalties
     for pothole in request.potholes:
-        nearest_node = graph_manager.get_nearest_node(pothole.location.lat, pothole.location.lng)
+        nearest_node = graph_manager.get_nearest_node(G, pothole.location.lat, pothole.location.lng)
         # Add penalty to edges connected to this node
         for neighbor in G.neighbors(nearest_node):
             if G.has_edge(nearest_node, neighbor):
@@ -46,7 +53,7 @@ def calculate_routes(request: RouteRequest):
 
     # Inject Blockages (Infinite weight)
     for blockage in request.blockages:
-        nearest_node = graph_manager.get_nearest_node(blockage.location.lat, blockage.location.lng)
+        nearest_node = graph_manager.get_nearest_node(G, blockage.location.lat, blockage.location.lng)
         for neighbor in G.neighbors(nearest_node):
             if G.has_edge(nearest_node, neighbor):
                 for key in G[nearest_node][neighbor]:
@@ -55,7 +62,8 @@ def calculate_routes(request: RouteRequest):
     # Run shortest path on custom cost
     try:
         safest_path = nx.shortest_path(G, source=start_node, target=end_node, weight='custom_cost')
-        safest_eta = sum(ox.utils_graph.get_route_edge_attributes(G, safest_path, 'travel_time')) / 60.0 # Return real ETA, not cost ETA
+        safest_route_gdf = ox.routing.route_to_gdf(G, safest_path, weight='custom_cost')
+        safest_eta = safest_route_gdf['travel_time'].sum() / 60.0 # Return real ETA, not cost ETA
     except nx.NetworkXNoPath:
         safest_path = []
         safest_eta = 0.0

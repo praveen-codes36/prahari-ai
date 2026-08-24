@@ -17,6 +17,7 @@ yarn-error.log*
 
 # ==== Python (backend, ml-model, routing-engine) ====
 __pycache__/
+cache/
 *.py[cod]
 *.pyo
 venv/
