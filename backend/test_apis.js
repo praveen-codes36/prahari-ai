@@ -91,6 +91,35 @@ async function runTests() {
         console.log(`✅ Success! Dashboard Data loaded. Nearest Hospital: ${dashboardRes.data.data.nearest_hospital?.name || 'N/A'}\n`);
 
 
+        // 11. POST /api/internal/calculate-health-score
+        console.log("Testing POST /api/internal/calculate-health-score ...");
+        const calcHealthRes = await axios.post(`${BASE_URL}/internal/calculate-health-score`, {
+            road_segment_id: "64f9b23c8a9e4b1a2c3d4e5f", // Valid Hex ObjectId
+            road_name: "MG Road",
+            factors: {
+                accident_history: 2,
+                potholes: 5,
+                traffic: "HIGH",
+                lighting: "GOOD",
+                drainage: "POOR",
+                complaints: 3,
+                road_condition: "POOR"
+            }
+        });
+        const roadSegmentId = calcHealthRes.data.data.road_segment_id;
+        console.log(`✅ Success! Health score calculated for ${calcHealthRes.data.data.road_name}: ${calcHealthRes.data.data.health_score}/100\n`);
+
+        // 12. GET /api/roads/health-scores
+        console.log("Testing GET /api/roads/health-scores ...");
+        const getHealthRes = await axios.get(`${BASE_URL}/roads/health-scores`);
+        console.log(`✅ Success! Found ${getHealthRes.data.data.length} road health records.\n`);
+
+        // 13. GET /api/roads/health-scores/:segmentId
+        console.log(`Testing GET /api/roads/health-scores/${roadSegmentId} ...`);
+        const getOneHealthRes = await axios.get(`${BASE_URL}/roads/health-scores/${roadSegmentId}`);
+        console.log(`✅ Success! Breakdown fetched: Potholes = ${getOneHealthRes.data.data.factors.potholes}\n`);
+
+
         console.log("=====================================");
         console.log("🎉 ALL API TESTS PASSED SUCCESSFULLY!");
         console.log("=====================================");
