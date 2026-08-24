@@ -22,8 +22,16 @@ app.get('/', (req, res) => {
 
 // routes import
 import emergencyRouter from "./routes/emergency.route.js"
+import accidentsRouter from "./routes/accidents.route.js"
+import ambulancesRouter from "./routes/ambulances.route.js"
+import hospitalsRouter from "./routes/hospitals.route.js"
+import roadBlockagesRouter from "./routes/road_blockages.route.js"
 
 // routes declaration
 app.use("/api/emergency", emergencyRouter)
+app.use("/api/accidents", accidentsRouter)
+app.use("/api/ambulances", ambulancesRouter)
+app.use("/api/hospitals", hospitalsRouter)
+app.use("/api/blockages", roadBlockagesRouter)
 
 export default app
