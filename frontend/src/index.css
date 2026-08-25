@@ -1,41 +1,109 @@
-html,
-body,
-#root {
-  width: 100%;
-  min-width: 0;
-  min-height: 100%;
-  margin: 0;
-  padding: 0;
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --surface-lowest: #080e1d;
+    --surface-low: #0f172a;
+    --surface: #0d1322;
+    --surface-container: #151c2c;
+    --surface-high: #1e293b;
+    --surface-highest: #334155;
+    --primary: #b3c5ff;
+    --primary-container: #0066ff;
+    --secondary: #bdf4ff;
+    --secondary-container: #00e3fd;
+    --error: #ffb4ab;
+    --error-container: #93000a;
+    --warning: #ffa000;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #0a0e14;
+    color: #dde2f8;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
 }
 
-html {
-  background: #020914;
+/* Subtle architectural grid pattern */
+.grid-pattern {
+  background-image: radial-gradient(rgba(140, 144, 161, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-body {
-  min-height: 100vh;
-
-  margin: 0;
-
-  overflow-x: hidden;
-
-  background: #020914;
-
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.grid-pattern-dense {
+  background-image: linear-gradient(rgba(0, 227, 253, 0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 227, 253, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+.radar-sweep {
+  background: conic-gradient(from 0deg at 50% 50%, rgba(0, 227, 253, 0.2) 0deg, rgba(0, 227, 253, 0) 60deg);
+  animation: radar 4s linear infinite;
 }
 
-button {
-  -webkit-tap-highlight-color: transparent;
+@keyframes radar {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-* {
-  box-sizing: border-box;
+.glow-primary {
+  box-shadow: 0 0 20px rgba(179, 197, 255, 0.25);
 }
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 227, 253, 0.25);
+}
+
+.glow-error {
+  box-shadow: 0 0 20px rgba(255, 180, 171, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px rgba(255, 160, 0, 0.3);
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 14, 20, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 144, 161, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(179, 197, 255, 0.45);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+

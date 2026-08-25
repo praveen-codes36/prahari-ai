@@ -1,0 +1,6 @@
+{
+  "name": "RoadGuard AI — Prahari Network",
+  "description": "AI-powered intelligent road infrastructure monitoring and emergency response command platform.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
