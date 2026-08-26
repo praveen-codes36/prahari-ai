@@ -8,10 +8,15 @@ dotenv.config({
 
 const port = process.env.PORT || 3000
 
+import http from "http";
+import { initSocket } from "./socket/index.js";
+
+const server = http.createServer(app);
+initSocket(server);
 
 connectDB()
   .then(()=>{
-      app.listen(port, () => {
+      server.listen(port, () => {
         console.log(`App listening on port http://localhost:${port}`)
       })
   })
