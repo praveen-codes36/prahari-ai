@@ -1,6 +1,15 @@
 import express from "express"
 import cors from "cors"
 
+import accidentsRouter from "./routes/accidents.route.js"
+import ambulancesRouter from "./routes/ambulances.route.js"
+import hospitalsRouter from "./routes/hospitals.route.js"
+import roadBlockagesRouter from "./routes/road_blockages.route.js"
+import emergencyRouter from "./routes/emergency.route.js"
+import roadHealthRouter from "./routes/road_health.route.js"
+import chatbotRouter from "./routes/chatbot.route.js"
+import internalRouter from "./routes/internal.route.js"
+
 const app =express()
 
 // basic configurations
@@ -19,6 +28,16 @@ app.use(cors({
 app.get('/', (req, res) => {
   res.send('Welcome to Prahari-AI')
 })
+
+// ---- Route mounting ----
+app.use("/api/accidents", accidentsRouter)
+app.use("/api/ambulances", ambulancesRouter)
+app.use("/api/hospitals", hospitalsRouter)
+app.use("/api/blockages", roadBlockagesRouter)
+app.use("/api/emergency", emergencyRouter)        // Feature 3 (routing) + Feature 5 (dashboard)
+app.use("/api/roads", roadHealthRouter)           // Feature 8
+app.use("/api/chatbot/citizen", chatbotRouter)    // Feature 11
+app.use("/api/internal", internalRouter)          // Cron / service-to-service endpoints
 
 // routes import
 import emergencyRouter from "./routes/emergency.route.js"

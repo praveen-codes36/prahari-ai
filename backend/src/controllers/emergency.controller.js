@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import { Accident } from "../models/accident.model.js";
 import { Ambulance } from "../models/ambulance.model.js";
 import { Hospital } from "../models/hospital.model.js";
@@ -5,10 +7,62 @@ import { RoadBlockage } from "../models/road_blockage.model.js";
 
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
-import axios from "axios";
+import { haversineDistanceMeters, metersToKm, extractRepresentativePoint } from "../utils/geo.js";
 
-// @desc    Core Intelligent Routing Engine Algorithm
+// URL of the Python FastAPI routing-engine service (routing-engine/main.py -> POST /route)
+const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://localhost:8000/route";
+const NEARBY_SEARCH_RADIUS_METERS = 20000; // 20km
+
+function toLatLng([lng, lat]) {
+    return { lat, lng };
+}
+
+// Best-effort pull of nearby open defects / risk zones from Person 1 / Person 3's modules.
+// Dynamically imported and wrapped in try/catch so this route keeps working today and
+// automatically picks up real data the moment those teammates add their models.
+async function getOptionalOverlays(coordinates) {
+    let defects = [];
+    let riskZones = [];
+
+    try {
+        const { Complaint } = await import("../models/complaint.model.js");
+        const nearbyComplaints = await Complaint.find({
+            status: { $ne: "RESOLVED" },
+            location: {
+                $near: { $geometry: { type: "Point", coordinates }, $maxDistance: NEARBY_SEARCH_RADIUS_METERS }
+            }
+        }).limit(50);
+
+        defects = nearbyComplaints.map((c) => ({
+            location: toLatLng(c.location.coordinates),
+            severity: c.severity
+        }));
+    } catch {
+        // Person 1's Complaint model isn't wired in yet — safe to skip, defects stays [].
+    }
+
+    try {
+        const { RiskZone } = await import("../models/risk_zone.model.js");
+        const nearbyRisk = await RiskZone.find({}).limit(50);
+
+        riskZones = nearbyRisk
+            .map((z) => {
+                const point = extractRepresentativePoint(z.geometry);
+                return point ? { location: toLatLng(point), risk_score: z.risk_score } : null;
+            })
+            .filter(Boolean);
+    } catch {
+        // Person 3's RiskZone model isn't wired in yet — safe to skip, riskZones stays [].
+    }
+
+    return { defects, riskZones };
+}
+
+// @desc    Core Intelligent Routing Engine Algorithm — finds nearest ambulance + hospital,
+//          gathers blockages/defects/risk, and asks the Python routing engine for the
+//          fastest + safest route.
 // @route   POST /api/emergency/route
+// @body    { accident_id? } OR { longitude, latitude }
 export const getEmergencyRoute = async (req, res) => {
     try {
         const { accident_id, longitude, latitude } = req.body;
@@ -18,8 +72,7 @@ export const getEmergencyRoute = async (req, res) => {
         }
 
         let accidentLocation;
-        
-        // 1. Determine the exact accident location
+
         if (accident_id) {
             const accident = await Accident.findById(accident_id);
             if (!accident) throw new ApiError(404, "Accident not found");
@@ -30,57 +83,53 @@ export const getEmergencyRoute = async (req, res) => {
 
         const [accLon, accLat] = accidentLocation;
 
-        // 2. Find nearest available ambulance
+        // 1. Nearest available ambulance
         const nearestAmbulance = await Ambulance.findOne({
             status: "AVAILABLE",
             current_location: {
                 $near: {
                     $geometry: { type: "Point", coordinates: [accLon, accLat] },
-                    $maxDistance: 20000 // 20km search radius
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
                 }
             }
         });
+        if (!nearestAmbulance) throw new ApiError(404, "No available ambulances found nearby");
 
+<<<<<<< HEAD
         // We won't throw an error if ambulance is not found.
         // We will just return null for ambulance details and still show the route to the hospital.
 
         // 3. Find nearest hospital
+=======
+        // 2. Nearest hospital
+>>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         const nearestHospital = await Hospital.findOne({
             location: {
                 $near: {
                     $geometry: { type: "Point", coordinates: [accLon, accLat] },
-                    $maxDistance: 20000
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
                 }
             }
         });
+        if (!nearestHospital) throw new ApiError(404, "No hospitals found nearby");
 
-        if (!nearestHospital) {
-            throw new ApiError(404, "No hospitals found nearby");
-        }
-
-        // 4. Gather active Road Blockages (Person 2's specific task)
+        // 3. Active blockages near the accident
         const activeBlockages = await RoadBlockage.find({
             is_active: true,
             location: {
                 $near: {
                     $geometry: { type: "Point", coordinates: [accLon, accLat] },
-                    $maxDistance: 20000
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
                 }
             }
         });
 
-        // ==========================================
-        // INTEGRATION WITH PERSON 1 AND PERSON 3
-        // ==========================================
-        // 5. Gather Infrastructure Defects & Risk Scores
-        // You will import Person 1's Complaint model and Person 3's Risk model here once they create them.
-        
-        let defects = []; // e.g., await Complaint.find({ status: "REPORTED", severity: "HIGH" ... })
-        let riskZones = []; // e.g., await RiskZone.find({ risk_score: "HIGH" ... })
+        // 4. Defects + risk zones from the other two modules (gracefully empty if not built yet)
+        const { defects, riskZones } = await getOptionalOverlays(accidentLocation);
 
-
-        // 6. Send Graph Data to Python Routing Engine Microservice
+        // 5. Build the payload — shape must match routing-engine/models.py::RouteRequest exactly
         const routingPayload = {
+<<<<<<< HEAD
             accident_location: {
                 lat: accLat,
                 lng: accLon
@@ -104,11 +153,24 @@ export const getEmergencyRoute = async (req, res) => {
                 location: { lat: r.location.coordinates[1], lng: r.location.coordinates[0] },
                 risk_score: r.risk_score
             }))
+=======
+            accident_location: toLatLng(accidentLocation),
+            hospital_location: toLatLng(nearestHospital.location.coordinates),
+            potholes: defects,
+            blockages: activeBlockages
+                .map((b) => {
+                    const point = extractRepresentativePoint(b.location);
+                    return point ? { location: toLatLng(point), reason: b.reason } : null;
+                })
+                .filter(Boolean),
+            risk_zones: riskZones
+>>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         };
 
+        // 6. Call the Python FastAPI routing microservice
         let routeResult;
-        
         try {
+<<<<<<< HEAD
             // Calling the Python FastAPI server
             const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://127.0.0.1:8000";
             const pythonResponse = await axios.post(`${ROUTING_ENGINE_URL}/route`, routingPayload);
@@ -129,11 +191,49 @@ export const getEmergencyRoute = async (req, res) => {
         } catch (microserviceError) {
             console.error("Python routing engine failed:", microserviceError.message);
             throw new ApiError(500, "Routing engine microservice is unreachable. Make sure the FastAPI server is running on port 8000.");
+=======
+            const { data } = await axios.post(ROUTING_ENGINE_URL, routingPayload, { timeout: 15000 });
+            routeResult = data;
+        } catch (microserviceError) {
+            console.error("Routing engine call failed:", microserviceError.message);
+            // Straight-line fallback so the emergency dashboard never hard-fails if the
+            // Python service (or its OSM download) is unavailable during a demo.
+            routeResult = {
+                recommended_route_type: "fastest",
+                fastest_route_coords: [
+                    toLatLng(nearestAmbulance.current_location.coordinates),
+                    toLatLng(accidentLocation),
+                    toLatLng(nearestHospital.location.coordinates)
+                ],
+                fastest_route_eta_mins: null,
+                safest_route_coords: [],
+                safest_route_eta_mins: null,
+                safest_route_pothole_count: 0,
+                safest_route_avg_risk: null,
+                fallback: true,
+                message: "Routing engine unreachable — showing straight-line fallback route."
+            };
+>>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         }
 
-        // 7. Return the final recommended route
-        return res.status(200).json(new ApiResponse(200, routeResult, "Emergency route calculated successfully"));
+        // 7. Mark the ambulance dispatched now that a route has been issued
+        if (nearestAmbulance.status === "AVAILABLE") {
+            nearestAmbulance.status = "DISPATCHED";
+            await nearestAmbulance.save();
+        }
 
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    ambulance: nearestAmbulance,
+                    hospital: nearestHospital,
+                    active_blockages_considered: activeBlockages.length,
+                    route: routeResult
+                },
+                "Emergency route calculated successfully"
+            )
+        );
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             statusCode: error.statusCode || 500,
@@ -222,5 +322,81 @@ export const getEmergencyDashboardSummary = async (req, res) => {
             success: false,
             errors: error.errors || []
         });
+    }
+};
+
+// @desc    Aggregated single call powering the Emergency Operator dashboard's summary card:
+//          accident, nearest ambulance + distance, nearest hospital + distance, traffic and
+//          road risk level for the area.
+// @route   GET /api/emergency/dashboard/:accidentId
+export const getEmergencyDashboard = async (req, res) => {
+    try {
+        const { accidentId } = req.params;
+
+        const accident = await Accident.findById(accidentId).populate("reported_by", "name email");
+        if (!accident) throw new ApiError(404, "Accident not found");
+
+        const [accLon, accLat] = accident.location.coordinates;
+
+        const nearestAmbulance = await Ambulance.findOne({
+            status: "AVAILABLE",
+            current_location: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: [accLon, accLat] },
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
+                }
+            }
+        });
+
+        const nearestHospital = await Hospital.findOne({
+            location: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: [accLon, accLat] },
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
+                }
+            }
+        });
+
+        const activeBlockagesNearby = await RoadBlockage.countDocuments({
+            is_active: true,
+            location: {
+                $near: { $geometry: { type: "Point", coordinates: [accLon, accLat] }, $maxDistance: 5000 }
+            }
+        });
+
+        // TODO(integration): replace these two once Person 3's endpoints exist:
+        //   traffic_level    <- GET /api/map/traffic near this point
+        //   road_risk_level  <- GET /api/risk/segment/:id (or /api/map/hotspots) near this point
+        const traffic_level = activeBlockagesNearby > 0 ? "HIGH" : "MODERATE";
+        const road_risk_level = "UNKNOWN";
+
+        const ambulanceDistanceKm = nearestAmbulance
+            ? metersToKm(
+                  haversineDistanceMeters(accident.location.coordinates, nearestAmbulance.current_location.coordinates)
+              )
+            : null;
+
+        const hospitalDistanceKm = nearestHospital
+            ? metersToKm(haversineDistanceMeters(accident.location.coordinates, nearestHospital.location.coordinates))
+            : null;
+
+        const dashboard = {
+            accident,
+            nearest_ambulance: nearestAmbulance
+                ? { ...nearestAmbulance.toObject(), distance_km: ambulanceDistanceKm }
+                : null,
+            nearest_hospital: nearestHospital
+                ? { ...nearestHospital.toObject(), distance_km: hospitalDistanceKm }
+                : null,
+            active_blockages_nearby: activeBlockagesNearby,
+            traffic_level,
+            road_risk_level
+        };
+
+        return res.status(200).json(new ApiResponse(200, dashboard, "Emergency dashboard snapshot retrieved"));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiError(error.statusCode || 500, error.message || "Error building emergency dashboard", [], error.stack)
+        );
     }
 };
