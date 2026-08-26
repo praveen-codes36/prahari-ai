@@ -42,9 +42,13 @@ app.use("/api/internal", internalRouter)          // Cron / service-to-service e
 // routes import
 import authRoutes from './routes/auth.routes.js';
 import repairPriorityRouter from "./routes/repair_priority.route.js"
+import riskRouter from "./routes/risk.route.js"
+import mapRouter from "./routes/map.route.js"
 
 // routes declaration
 app.use('/api/auth', authRoutes);
+app.use("/api/risk", riskRouter)
+app.use("/api/map", mapRouter)
 
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)
