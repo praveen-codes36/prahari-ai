@@ -11,7 +11,7 @@ import roadHealthRouter from "./routes/road_health.route.js"
 import repairPriorityRouter from "./routes/repair_priority.route.js"
 import chatbotRouter from "./routes/chatbot.route.js"
 import internalRouter from "./routes/internal.route.js"
-
+import complaintsRouter from "./routes/complaints.routes.js";
 const app = express()
 
 // basic configurations
@@ -37,25 +37,23 @@ app.use('/api/auth', authRoutes);
 app.use("/api/accidents", accidentsRouter)
 app.use("/api/ambulances", ambulancesRouter)
 app.use("/api/hospitals", hospitalsRouter)
+app.use("/api/complaints", complaintsRouter);
 app.use("/api/blockages", roadBlockagesRouter)
 app.use("/api/emergency", emergencyRouter)        // Feature 3 (routing) + Feature 5 (dashboard)
 app.use("/api/roads", roadHealthRouter)           // Feature 8
 app.use("/api/chatbot/citizen", chatbotRouter)    // Feature 11
 app.use("/api/internal", internalRouter)          // Cron / service-to-service endpoints
 
-<<<<<<< HEAD
-
-
-// Mount the Road Health router at /api (the router defines /roads/... and /internal/... internally)
-app.use("/api", roadHealthRouter)
-=======
 // routes import
 import authRoutes from './routes/auth.routes.js';
 import repairPriorityRouter from "./routes/repair_priority.route.js"
+import riskRouter from "./routes/risk.route.js"
+import mapRouter from "./routes/map.route.js"
 
 // routes declaration
 app.use('/api/auth', authRoutes);
->>>>>>> b4c114c7dc1c2acbfcd831a56dd6225de36d9bd6
+app.use("/api/risk", riskRouter)
+app.use("/api/map", mapRouter)
 
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)
