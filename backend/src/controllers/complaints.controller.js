@@ -1,7 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
-import { Complaint } from "../models/Complaint.model.js";
+import { Complaint } from "../models/complaint.model.js";
 import { Department } from "../models/Department.model.js";
 
 const MAP_DEFECT_TO_DEPARTMENT = {

@@ -10,7 +10,7 @@ import {
   detectDefectInternal,
   checkDuplicateInternal,
   getDepartments
-} from "../controllers/complaint.controller.js";
+} from "../controllers/complaints.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -26,8 +26,7 @@ router.get("/me", protect, getMyComplaints);
 // AUTHORITY ROUTES
 // ==========================================
 // Must be defined before /:id so it doesn't clash
-router.get("/", protect, getAllComplaints); 
-router.get("/departments", protect, getDepartments); // Added from PRD
+router.get("/", protect, getAllComplaints);
 
 // ==========================================
 // DYNAMIC ID ROUTES (Both)
@@ -35,11 +34,5 @@ router.get("/departments", protect, getDepartments); // Added from PRD
 router.get("/:id", protect, getComplaintById);
 router.get("/:id/duplicates", protect, getComplaintDuplicates);
 router.patch("/:id/status", protect, updateComplaintStatus);
-
-// ==========================================
-// INTERNAL SERVICE ROUTES
-// ==========================================
-router.post("/internal/detect-defect", protect, upload.single("photo"), detectDefectInternal);
-router.post("/internal/check-duplicate", protect, checkDuplicateInternal);
 
 export default router;

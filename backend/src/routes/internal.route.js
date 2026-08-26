@@ -10,7 +10,16 @@ router.route("/calculate-health-score").post(calculateHealthScore);
 // Route: /api/internal/predict-risk
 router.route("/predict-risk").post(predictRisk);
 
-// Other /api/internal/* routes from the spec (detect-defect, calculate-priority,
-// trigger-recalculation, predict-maintenance, ...) belong to Person 1 / Person 3's modules.
+import { detectDefectInternal, checkDuplicateInternal } from "../controllers/complaints.controller.js";
+import { protect } from "../middlewares/auth.middleware.js";
+import multer from "multer";
+
+const upload = multer({ dest: "uploads/" });
+
+// Route: /api/internal/detect-defect
+router.route("/detect-defect").post(protect, upload.single("photo"), detectDefectInternal);
+
+// Route: /api/internal/check-duplicate
+router.route("/check-duplicate").post(protect, checkDuplicateInternal);
 
 export default router;
