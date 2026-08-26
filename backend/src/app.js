@@ -41,24 +41,10 @@ app.use("/api/internal", internalRouter)          // Cron / service-to-service e
 
 // routes import
 import authRoutes from './routes/auth.routes.js';
-import emergencyRouter from "./routes/emergency.route.js"
-import accidentsRouter from "./routes/accidents.route.js"
-import ambulancesRouter from "./routes/ambulances.route.js"
-import hospitalsRouter from "./routes/hospitals.route.js"
-import roadBlockagesRouter from "./routes/road_blockages.route.js"
-import roadHealthRouter from "./routes/road_health.route.js"
 import repairPriorityRouter from "./routes/repair_priority.route.js"
 
 // routes declaration
 app.use('/api/auth', authRoutes);
-app.use("/api/emergency", emergencyRouter)
-app.use("/api/accidents", accidentsRouter)
-app.use("/api/ambulances", ambulancesRouter)
-app.use("/api/hospitals", hospitalsRouter)
-app.use("/api/blockages", roadBlockagesRouter)
-
-// Mount the Road Health router at /api (the router defines /roads/... and /internal/... internally)
-app.use("/api", roadHealthRouter)
 
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)

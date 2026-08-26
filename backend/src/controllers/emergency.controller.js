@@ -95,14 +95,7 @@ export const getEmergencyRoute = async (req, res) => {
         });
         if (!nearestAmbulance) throw new ApiError(404, "No available ambulances found nearby");
 
-<<<<<<< HEAD
-        // We won't throw an error if ambulance is not found.
-        // We will just return null for ambulance details and still show the route to the hospital.
-
-        // 3. Find nearest hospital
-=======
         // 2. Nearest hospital
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         const nearestHospital = await Hospital.findOne({
             location: {
                 $near: {
@@ -129,31 +122,6 @@ export const getEmergencyRoute = async (req, res) => {
 
         // 5. Build the payload — shape must match routing-engine/models.py::RouteRequest exactly
         const routingPayload = {
-<<<<<<< HEAD
-            accident_location: {
-                lat: accLat,
-                lng: accLon
-            },
-            hospital_location: {
-                lat: nearestHospital.location.coordinates[1],
-                lng: nearestHospital.location.coordinates[0]
-            },
-            blockages: activeBlockages.map(b => ({
-                location: {
-                    lat: b.location.coordinates[1],
-                    lng: b.location.coordinates[0]
-                },
-                reason: b.reason || "Unknown Blockage"
-            })),
-            potholes: defects.map(d => ({
-                location: { lat: d.location.coordinates[1], lng: d.location.coordinates[0] },
-                severity: d.severity
-            })),
-            risk_zones: riskZones.map(r => ({
-                location: { lat: r.location.coordinates[1], lng: r.location.coordinates[0] },
-                risk_score: r.risk_score
-            }))
-=======
             accident_location: toLatLng(accidentLocation),
             hospital_location: toLatLng(nearestHospital.location.coordinates),
             potholes: defects,
@@ -164,34 +132,11 @@ export const getEmergencyRoute = async (req, res) => {
                 })
                 .filter(Boolean),
             risk_zones: riskZones
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         };
 
         // 6. Call the Python FastAPI routing microservice
         let routeResult;
         try {
-<<<<<<< HEAD
-            // Calling the Python FastAPI server
-            const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://127.0.0.1:8000";
-            const pythonResponse = await axios.post(`${ROUTING_ENGINE_URL}/route`, routingPayload);
-            routeResult = pythonResponse.data;
-            
-            // Adding nearest ambulance details for the frontend
-            routeResult.nearest_ambulance = nearestAmbulance ? {
-                id: nearestAmbulance._id,
-                vehicle_number: nearestAmbulance.vehicle_number,
-                coordinates: nearestAmbulance.current_location.coordinates
-            } : null;
-            routeResult.nearest_hospital = {
-                id: nearestHospital._id,
-                name: nearestHospital.name,
-                coordinates: nearestHospital.location.coordinates
-            };
-            
-        } catch (microserviceError) {
-            console.error("Python routing engine failed:", microserviceError.message);
-            throw new ApiError(500, "Routing engine microservice is unreachable. Make sure the FastAPI server is running on port 8000.");
-=======
             const { data } = await axios.post(ROUTING_ENGINE_URL, routingPayload, { timeout: 15000 });
             routeResult = data;
         } catch (microserviceError) {
@@ -213,7 +158,6 @@ export const getEmergencyRoute = async (req, res) => {
                 fallback: true,
                 message: "Routing engine unreachable — showing straight-line fallback route."
             };
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         }
 
         // 7. Mark the ambulance dispatched now that a route has been issued

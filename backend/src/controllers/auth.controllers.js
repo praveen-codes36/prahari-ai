@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 import { User } from "../models/User.model.js";
+import { Department } from "../models/Department.model.js";
 
 
 const sendEmailHelper = async (to, subject, text) => {
