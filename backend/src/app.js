@@ -43,10 +43,19 @@ app.use("/api/roads", roadHealthRouter)           // Feature 8
 app.use("/api/chatbot/citizen", chatbotRouter)    // Feature 11
 app.use("/api/internal", internalRouter)          // Cron / service-to-service endpoints
 
+<<<<<<< HEAD
 
 
 // Mount the Road Health router at /api (the router defines /roads/... and /internal/... internally)
 app.use("/api", roadHealthRouter)
+=======
+// routes import
+import authRoutes from './routes/auth.routes.js';
+import repairPriorityRouter from "./routes/repair_priority.route.js"
+
+// routes declaration
+app.use('/api/auth', authRoutes);
+>>>>>>> b4c114c7dc1c2acbfcd831a56dd6225de36d9bd6
 
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)

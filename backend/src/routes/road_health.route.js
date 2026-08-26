@@ -1,4 +1,5 @@
 import { Router } from "express";
+<<<<<<< HEAD
 import { 
     getAllRoadHealthScores, 
     getRoadHealthScoreById, 
@@ -27,6 +28,8 @@ router.route("/roads/health-scores/:segmentId")
 // Route: POST /api/internal/calculate-health-score
 router.route("/internal/calculate-health-score")
     .post(calculateHealthScore);
+=======
+>>>>>>> b4c114c7dc1c2acbfcd831a56dd6225de36d9bd6
 import { listRoadHealthScores, getRoadHealthScore } from "../controllers/road_health.controller.js";
 
 
