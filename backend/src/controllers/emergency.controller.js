@@ -95,14 +95,11 @@ export const getEmergencyRoute = async (req, res) => {
         });
         if (!nearestAmbulance) throw new ApiError(404, "No available ambulances found nearby");
 
-<<<<<<< HEAD
         // We won't throw an error if ambulance is not found.
         // We will just return null for ambulance details and still show the route to the hospital.
 
         // 3. Find nearest hospital
-=======
         // 2. Nearest hospital
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         const nearestHospital = await Hospital.findOne({
             location: {
                 $near: {
@@ -129,7 +126,6 @@ export const getEmergencyRoute = async (req, res) => {
 
         // 5. Build the payload — shape must match routing-engine/models.py::RouteRequest exactly
         const routingPayload = {
-<<<<<<< HEAD
             accident_location: {
                 lat: accLat,
                 lng: accLon
@@ -152,8 +148,7 @@ export const getEmergencyRoute = async (req, res) => {
             risk_zones: riskZones.map(r => ({
                 location: { lat: r.location.coordinates[1], lng: r.location.coordinates[0] },
                 risk_score: r.risk_score
-            }))
-=======
+            })),
             accident_location: toLatLng(accidentLocation),
             hospital_location: toLatLng(nearestHospital.location.coordinates),
             potholes: defects,
@@ -164,13 +159,11 @@ export const getEmergencyRoute = async (req, res) => {
                 })
                 .filter(Boolean),
             risk_zones: riskZones
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         };
 
         // 6. Call the Python FastAPI routing microservice
         let routeResult;
         try {
-<<<<<<< HEAD
             // Calling the Python FastAPI server
             const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://127.0.0.1:8000";
             const pythonResponse = await axios.post(`${ROUTING_ENGINE_URL}/route`, routingPayload);
@@ -188,12 +181,6 @@ export const getEmergencyRoute = async (req, res) => {
                 coordinates: nearestHospital.location.coordinates
             };
             
-        } catch (microserviceError) {
-            console.error("Python routing engine failed:", microserviceError.message);
-            throw new ApiError(500, "Routing engine microservice is unreachable. Make sure the FastAPI server is running on port 8000.");
-=======
-            const { data } = await axios.post(ROUTING_ENGINE_URL, routingPayload, { timeout: 15000 });
-            routeResult = data;
         } catch (microserviceError) {
             console.error("Routing engine call failed:", microserviceError.message);
             // Straight-line fallback so the emergency dashboard never hard-fails if the
@@ -213,7 +200,6 @@ export const getEmergencyRoute = async (req, res) => {
                 fallback: true,
                 message: "Routing engine unreachable — showing straight-line fallback route."
             };
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
         }
 
         // 7. Mark the ambulance dispatched now that a route has been issued

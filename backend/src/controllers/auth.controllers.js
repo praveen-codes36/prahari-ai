@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.model.js";
+import nodemailer from "nodemailer";   
 
 
 const sendEmailHelper = async (to, subject, text) => {
@@ -112,15 +113,12 @@ export const forgotPassword = async (req, res) => {
             return res.status(404).json({ message: "User not found with this email" });
         }
 
-        // Generate a random 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Save OTP and set expiry for 15 minutes from now
         user.reset_otp = otp;
         user.reset_otp_expiry = Date.now() + 15 * 60 * 1000;
         await user.save();
 
-        // TODO: In the future, integrate Nodemailer here to actually email the user
         await sendEmailHelper(email, "Password Reset OTP - Prahari-AI",
             `Your OTP for password reset is: ${otp}. It is valid for 15 minutes.`);
 
@@ -139,10 +137,8 @@ export const resendOTP = async (req, res) => {
             return res.status(404).json({ message: "User not found with this email" });
         }
 
-        // Generate a new random 6-digit OTP
         const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Overwrite the old OTP and reset the 15-minute timer
         user.reset_otp = newOtp;
         user.reset_otp_expiry = Date.now() + 15 * 60 * 1000;
         await user.save();
@@ -161,33 +157,27 @@ export const resetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
 
-        // 1. Find the user
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // 2. Check if OTP matches
         if (user.reset_otp !== otp) {
             return res.status(400).json({ message: "Invalid OTP" });
         }
 
-        // 3. Check if OTP has expired
         if (user.reset_otp_expiry < Date.now()) {
             return res.status(400).json({ message: "OTP has expired. Please request a new one." });
         }
 
-        // 4. Hash the new password
         const salt = await bcrypt.genSalt(10);
         user.password_hash = await bcrypt.hash(newPassword, salt);
 
-        // 5. Clear the OTP fields so they can't be used again
         user.reset_otp = null;
         user.reset_otp_expiry = null;
 
         await user.save();
 
-        // 6. Send a success confirmation email
         await sendEmailHelper(
             email,
             "Password Reset Successful - Prahari-AI",

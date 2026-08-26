@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { RoadHealthScore } from "../models/road_health_score.model.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
@@ -23,7 +22,6 @@ export const getAllRoadHealthScores = async (req, res) => {
         const scores = await RoadHealthScore.find(query).sort({ health_score: 1 }); // Lowest first
 
         return res.status(200).json(new ApiResponse(200, scores, "Road health scores fetched successfully"));
-=======
 import { RoadHealthScore } from "../models/road_health.model.js";
 import { Accident } from "../models/accident.model.js";
 import { RoadBlockage } from "../models/road_blockage.model.js";
@@ -65,7 +63,6 @@ export const listRoadHealthScores = async (req, res) => {
         return res
             .status(200)
             .json(new ApiResponse(200, filtered, "Road health scores retrieved successfully"));
->>>>>>> a7d5f7d (Loaded the chatbot and wired the backend with chatbot, road health model, emergency routes and other wirings)
     } catch (error) {
         return res.status(error.statusCode || 500).json(
             new ApiError(error.statusCode || 500, error.message || "Error fetching road health scores", [], error.stack)
