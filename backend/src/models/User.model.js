@@ -26,6 +26,14 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Department',
         default: null 
+    },
+    reset_otp: {
+        type: String,
+        default: null
+    },
+    reset_otp_expiry: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

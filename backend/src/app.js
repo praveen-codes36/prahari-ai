@@ -40,6 +40,7 @@ app.use("/api/chatbot/citizen", chatbotRouter)    // Feature 11
 app.use("/api/internal", internalRouter)          // Cron / service-to-service endpoints
 
 // routes import
+import authRoutes from './routes/auth.routes.js';
 import emergencyRouter from "./routes/emergency.route.js"
 import accidentsRouter from "./routes/accidents.route.js"
 import ambulancesRouter from "./routes/ambulances.route.js"
@@ -49,6 +50,7 @@ import roadHealthRouter from "./routes/road_health.route.js"
 import repairPriorityRouter from "./routes/repair_priority.route.js"
 
 // routes declaration
+app.use('/api/auth', authRoutes);
 app.use("/api/emergency", emergencyRouter)
 app.use("/api/accidents", accidentsRouter)
 app.use("/api/ambulances", ambulancesRouter)
