@@ -304,7 +304,7 @@ export const getEmergencyDashboard = async (req, res) => {
         const activeBlockagesNearby = await RoadBlockage.countDocuments({
             is_active: true,
             location: {
-                $near: { $geometry: { type: "Point", coordinates: [accLon, accLat] }, $maxDistance: 5000 }
+                $geoWithin: { $centerSphere: [[accLon, accLat], 5000 / 6378100] }
             }
         });
 

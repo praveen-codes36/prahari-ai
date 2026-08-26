@@ -14,7 +14,7 @@ export const reportAccident = async (req, res) => {
         // ==========================================
         // Ideally, `req.user` will be populated by Person 1's Authentication middleware.
         // For testing until Auth is ready, we also check `req.body.reported_by`.
-        const reported_by = req.user?._id || req.body.reported_by;
+        const reported_by = req.user?.id || req.body.reported_by;
 
         if (!reported_by) {
             throw new ApiError(400, "User ID is required. (Person 1 Authentication needed)");
