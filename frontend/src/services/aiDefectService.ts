@@ -1,4 +1,5 @@
 import { AIDefectAnalysis, DefectType, SeverityLevel } from '../types';
+import apiClient from './apiClient';
 
 export interface ScanStage {
   stage: string;
@@ -20,36 +21,51 @@ export const analyzeDefectImage = async (
     { stage: 'CLASSIFICATION', progress: 100, message: 'Triage complete. Routing to Municipal PWD.', detail: 'Confidence: 94% · Severity: CRITICAL · Priority: P1' },
   ];
 
-  for (const step of steps) {
-    if (onProgress) {
-      onProgress(step);
-    }
-    // Simulate real AI processing latency for UI fidelity
-    await new Promise((resolve) => setTimeout(resolve, 380));
-  }
+  // Start actual API call
+  try {
+    const res = await apiClient.post('/complaints', {
+      photo_url: _imageFileOrUrl || 'dummy_url',
+      location: {
+        type: 'Point',
+        coordinates: [81.8463, 25.4358], // Mock GPS location
+      },
+    });
 
-  return {
-    defectType: 'pothole',
-    defectName: 'Structural Pothole >15cm depth',
-    confidence: 94,
-    severity: 'critical',
-    estimatedDepth: '>16.8 cm',
-    estimatedDimensions: '1.4m × 0.9m',
-    riskScore: 92,
-    departmentRouting: 'PWD-ROAD (Western Circle)',
-    priorityLevel: 'P1',
-    potentialDuplicate: {
-      reportId: 'RD-8842',
-      distanceMeters: 40,
-      matchConfidence: 88,
-    },
-    reasoning: {
-      edgeDetection: 'High-contrast boundary identified indicating structural rupture of top asphalt layer.',
-      depthEstimation: 'Shadow gradient analysis confirms depth exceeds 15cm threshold, presenting immediate axle fracture hazard.',
-      trafficCorrelation: 'High-density urban commuter artery with heavy bus transit volume.',
-      pedestrianRisk: 'Severe skid hazard for two-wheelers and pedestrians in wet monsoon conditions.',
-    },
-  };
+    const data = res.data.data; // The returned complaint object
+
+    for (const step of steps) {
+      if (onProgress) {
+        onProgress(step);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 380));
+    }
+
+    return {
+      defectType: data.defect_type ? data.defect_type.toLowerCase() : 'pothole',
+      defectName: data.defect_type ? `${data.defect_type} Detected` : 'Structural Pothole >15cm depth',
+      confidence: data.confidence_score || 94,
+      severity: data.severity ? data.severity.toLowerCase() : 'critical',
+      estimatedDepth: '>16.8 cm',
+      estimatedDimensions: '1.4m × 0.9m',
+      riskScore: 92,
+      departmentRouting: data.assigned_department_id || 'PWD-ROAD',
+      priorityLevel: 'P1',
+      potentialDuplicate: data.is_duplicate ? {
+        reportId: data.duplicate_of || 'RD-8842',
+        distanceMeters: 40,
+        matchConfidence: data.duplicate_similarity_score || 88,
+      } : undefined,
+      reasoning: {
+        edgeDetection: 'High-contrast boundary identified indicating structural rupture of top asphalt layer.',
+        depthEstimation: 'Shadow gradient analysis confirms depth exceeds 15cm threshold.',
+        trafficCorrelation: 'High-density urban commuter artery with heavy transit volume.',
+        pedestrianRisk: 'Severe skid hazard for two-wheelers and pedestrians in wet monsoon conditions.',
+      },
+    };
+  } catch (error) {
+    console.error('Defect analysis failed', error);
+    throw error;
+  }
 };
 
 export const getSeverityColor = (severity: SeverityLevel) => {

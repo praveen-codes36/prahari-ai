@@ -81,7 +81,14 @@ export const loginUser = async (req, res) => {
             "You have successfully logged into your Prahari-AI account. If this was not you, please reset your password immediately.");
         res.status(200).json({
             message: "Login successful",
-            token
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                department_id: user.department_id
+            }
         });
     } catch (error) {
         res.status(500).json({ message: "Server error during login", error: error.message });
