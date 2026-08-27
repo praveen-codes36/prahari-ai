@@ -13,6 +13,13 @@ const MAP_DEFECT_TO_DEPARTMENT = {
   OTHER: "General Civic Department"
 };
 
+const MAP_ML_LABEL_TO_ENUM = {
+  "Pothole": "POTHOLE",
+  "Streetlight Defect": "BROKEN_STREETLIGHT",
+  "Garbage Accumulation": "GARBAGE",
+  "Drainage Issues": "DRAINAGE"
+};
+
 // ==========================================
 // INTERNAL HELPERS
 // ==========================================
@@ -70,7 +77,10 @@ export const createComplaint = async (req, res) => {
     if (!photoFile || !longitude || !latitude) return res.status(400).json({ message: "Photo and GPS required." });
 
     const mlResult = await detectDefectViaML(photoFile.path);
-    const { defect_type, severity, confidence_score } = mlResult;
+    const raw_defect = mlResult.defect_type || "OTHER";
+    const defect_type = MAP_ML_LABEL_TO_ENUM[raw_defect] || "OTHER";
+    const severity = mlResult.severity || "MEDIUM";
+    const confidence_score = mlResult.confidence_score || 50;
 
     const deptName = MAP_DEFECT_TO_DEPARTMENT[defect_type] || "General Civic Department";
     const department = await Department.findOne({ name: deptName });
@@ -78,7 +88,7 @@ export const createComplaint = async (req, res) => {
     const existingDuplicate = await checkDuplicateHelper(parseFloat(longitude), parseFloat(latitude), defect_type);
 
     const newComplaint = await Complaint.create({
-      citizen_id: req.user._id,
+      citizen_id: req.user.id || req.user._id,
       photo_url: photoFile.path,
       defect_type,
       severity,
@@ -96,14 +106,15 @@ export const createComplaint = async (req, res) => {
 
     return res.status(201).json({ success: true, data: newComplaint });
   } catch (error) {
-    return res.status(500).json({ message: "Failed to process complaint." });
+    console.error("createComplaint Error:", error);
+    return res.status(500).json({ message: "Failed to process complaint.", error: error.message, stack: error.stack });
   }
 };
 
 // GET /api/complaints/me
 export const getMyComplaints = async (req, res) => {
   try {
-    const complaints = await Complaint.find({ citizen_id: req.user._id }).sort({ createdAt: -1 });
+    const complaints = await Complaint.find({ citizen_id: req.user.id || req.user._id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: complaints });
   } catch (error) {
     res.status(500).json({ message: "Error fetching complaints." });
