@@ -36,13 +36,15 @@ export const reportAccident = async (req, res) => {
         // ==========================================
         // INTEGRATION WITH PERSON 3 (ML Services)
         // ==========================================
-        // Trigger ML Risk recalculation in the background (fire-and-forget)
         try {
-             // Example call to Person 3's Python/Node internal API:
-             // axios.post("http://localhost:8000/api/internal/predict-risk", { accident_id: newAccident._id })
-             console.log("--> Triggered Person 3 ML Risk recalculation for new accident:", newAccident._id);
+             const port = process.env.PORT || 3000;
+             axios.post(`http://localhost:${port}/api/internal/trigger-recalculation`, { 
+                 event_type: "new_accident", 
+                 accident_id: newAccident._id 
+             });
+             console.log("--> Triggered Closed-Loop System for new accident:", newAccident._id);
         } catch (mlError) {
-             console.error("--> Failed to notify ML Service", mlError.message);
+             console.error("--> Failed to notify Orchestrator", mlError.message);
         }
 
         return res.status(201).json(new ApiResponse(201, newAccident, "Accident reported successfully"));

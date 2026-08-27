@@ -4,12 +4,14 @@ import { Accident } from "../models/accident.model.js";
 import { Ambulance } from "../models/ambulance.model.js";
 import { Hospital } from "../models/hospital.model.js";
 import { RoadBlockage } from "../models/road_blockage.model.js";
+import { Complaint } from "../models/complaint.model.js";
+import { RiskZone } from "../models/risk_zone.model.js";
 
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
 import { haversineDistanceMeters, metersToKm, extractRepresentativePoint } from "../utils/geo.js";
 
-// URL of the Python FastAPI routing-engine service (routing-engine/main.py -> POST /route)
+// URL of the Python FastAPI routing-engine service (now integrated in ml-model/server.py)
 const ROUTING_ENGINE_URL = process.env.ROUTING_ENGINE_URL || "http://localhost:8000/route";
 const NEARBY_SEARCH_RADIUS_METERS = 20000; // 20km
 
@@ -17,43 +19,30 @@ function toLatLng([lng, lat]) {
     return { lat, lng };
 }
 
-// Best-effort pull of nearby open defects / risk zones from Person 1 / Person 3's modules.
-// Dynamically imported and wrapped in try/catch so this route keeps working today and
-// automatically picks up real data the moment those teammates add their models.
 async function getOptionalOverlays(coordinates) {
     let defects = [];
     let riskZones = [];
 
-    try {
-        const { Complaint } = await import("../models/complaint.model.js");
-        const nearbyComplaints = await Complaint.find({
-            status: { $ne: "RESOLVED" },
-            location: {
-                $near: { $geometry: { type: "Point", coordinates }, $maxDistance: NEARBY_SEARCH_RADIUS_METERS }
-            }
-        }).limit(50);
+    const nearbyComplaints = await Complaint.find({
+        status: { $ne: "RESOLVED" },
+        location: {
+            $near: { $geometry: { type: "Point", coordinates }, $maxDistance: NEARBY_SEARCH_RADIUS_METERS }
+        }
+    }).limit(50);
 
-        defects = nearbyComplaints.map((c) => ({
-            location: toLatLng(c.location.coordinates),
-            severity: c.severity
-        }));
-    } catch {
-        // Person 1's Complaint model isn't wired in yet — safe to skip, defects stays [].
-    }
+    defects = nearbyComplaints.map((c) => ({
+        location: toLatLng(c.location.coordinates),
+        severity: c.severity
+    }));
 
-    try {
-        const { RiskZone } = await import("../models/risk_zone.model.js");
-        const nearbyRisk = await RiskZone.find({}).limit(50);
+    const nearbyRisk = await RiskZone.find({}).limit(50);
 
-        riskZones = nearbyRisk
-            .map((z) => {
-                const point = extractRepresentativePoint(z.geometry);
-                return point ? { location: toLatLng(point), risk_score: z.risk_score } : null;
-            })
-            .filter(Boolean);
-    } catch {
-        // Person 3's RiskZone model isn't wired in yet — safe to skip, riskZones stays [].
-    }
+    riskZones = nearbyRisk
+        .map((z) => {
+            const point = extractRepresentativePoint(z.geometry);
+            return point ? { location: toLatLng(point), risk_score: z.risk_score } : null;
+        })
+        .filter(Boolean);
 
     return { defects, riskZones };
 }
@@ -233,6 +222,22 @@ export const getEmergencyDashboardSummary = async (req, res) => {
         const nearestAmbulance = nearestAmbulanceResult.length > 0 ? nearestAmbulanceResult[0] : null;
         const nearestHospital = nearestHospitalResult.length > 0 ? nearestHospitalResult[0] : null;
 
+        const activeBlockagesNearby = await RoadBlockage.countDocuments({
+            is_active: true,
+            location: {
+                $geoWithin: { $centerSphere: [accidentLocation, 5000 / 6378100] }
+            }
+        });
+
+        const nearestRiskZone = await RiskZone.findOne({
+            geometry: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: accidentLocation },
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
+                }
+            }
+        });
+
         const dashboardData = {
             accident: {
                 id: accident._id,
@@ -253,8 +258,8 @@ export const getEmergencyDashboardSummary = async (req, res) => {
                 distance_km: (nearestHospital.distance_meters / 1000).toFixed(2),
                 coordinates: nearestHospital.location.coordinates
             } : null,
-            current_traffic_level: "HIGH", // Mocked as per PDF spec
-            road_risk_level: "MEDIUM" // Mocked as per PDF spec
+            current_traffic_level: activeBlockagesNearby > 0 ? "HIGH" : "MODERATE",
+            road_risk_level: nearestRiskZone ? nearestRiskZone.risk_level : "UNKNOWN"
         };
 
         return res.status(200).json(new ApiResponse(200, dashboardData, "Dashboard summary fetched successfully"));
@@ -308,11 +313,17 @@ export const getEmergencyDashboard = async (req, res) => {
             }
         });
 
-        // TODO(integration): replace these two once Person 3's endpoints exist:
-        //   traffic_level    <- GET /api/map/traffic near this point
-        //   road_risk_level  <- GET /api/risk/segment/:id (or /api/map/hotspots) near this point
+        const nearestRiskZone = await RiskZone.findOne({
+            geometry: {
+                $near: {
+                    $geometry: { type: "Point", coordinates: [accLon, accLat] },
+                    $maxDistance: NEARBY_SEARCH_RADIUS_METERS
+                }
+            }
+        });
+
         const traffic_level = activeBlockagesNearby > 0 ? "HIGH" : "MODERATE";
-        const road_risk_level = "UNKNOWN";
+        const road_risk_level = nearestRiskZone ? nearestRiskZone.risk_level : "UNKNOWN";
 
         const ambulanceDistanceKm = nearestAmbulance
             ? metersToKm(
