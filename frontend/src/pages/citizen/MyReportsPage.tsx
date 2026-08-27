@@ -53,6 +53,9 @@ export const MyReportsPage: React.FC = () => {
           imgPath = imgPath.replace(/\\/g, '/');
           const imageUrl = imgPath.startsWith('http') ? imgPath : `http://localhost:5000/${imgPath}`;
 
+          const lat = c.location?.coordinates[1] || 0;
+          const lng = c.location?.coordinates[0] || 0;
+
           return {
             id: c._id.slice(-6).toUpperCase(), // Short ID
             title: `${(c.defect_type || 'Unknown').replace('_', ' ')} Detected`,
@@ -60,10 +63,10 @@ export const MyReportsPage: React.FC = () => {
             severity: (c.severity || 'MEDIUM').toLowerCase() as any,
             status: mapBackendStatus(c.status),
             location: {
-              lat: c.location?.coordinates[1] || 0,
-              lng: c.location?.coordinates[0] || 0,
-              address: 'GPS Coordinate Location',
-              city: 'Local Area'
+              lat,
+              lng,
+              address: 'Loading location...',
+              city: ''
             },
             imageUrl: imageUrl,
             aiAnalysis: {
@@ -97,7 +100,23 @@ export const MyReportsPage: React.FC = () => {
           };
         });
 
-        setReports(mappedReports);
+        const enrichedReports = await Promise.all(mappedReports.map(async (r) => {
+           if (r.location.lat !== 0 && r.location.lng !== 0) {
+             try {
+                const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${r.location.lat}&longitude=${r.location.lng}&localityLanguage=en`);
+                const geoData = await res.json();
+                r.location.address = geoData.locality || `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+                r.location.city = geoData.city || geoData.principalSubdivision || '';
+             } catch (e) {
+                r.location.address = `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+             }
+           } else {
+             r.location.address = 'Unknown Location';
+           }
+           return r;
+        }));
+
+        setReports(enrichedReports);
       } catch (error) {
         console.error('Failed to fetch reports:', error);
       } finally {

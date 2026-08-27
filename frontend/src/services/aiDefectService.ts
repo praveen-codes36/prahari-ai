@@ -10,10 +10,11 @@ export interface ScanStage {
 
 export const analyzeDefectImage = async (
   imageFileOrUrl: File | string,
+  location?: { latitude: number, longitude: number },
   onProgress?: (stage: ScanStage) => void
 ): Promise<AIDefectAnalysis & { reportId: string }> => {
   const steps: ScanStage[] = [
-    { stage: 'INGEST', progress: 15, message: 'CV-Vision online: Ingesting image buffer & telemetry...', detail: 'Latching EXIF location coordinates: 19.1136° N, 72.8697° E' },
+    { stage: 'INGEST', progress: 15, message: 'CV-Vision online: Ingesting image buffer & telemetry...', detail: `Latching EXIF location coordinates: ${location?.latitude || 19.1136}° N, ${location?.longitude || 72.8697}° E` },
     { stage: 'PREPROCESS', progress: 35, message: 'Normalizing photometric exposure and texture contrast...', detail: 'High-contrast edge kernel applied across road asphalt plane' },
     { stage: 'SEGMENTATION', progress: 60, message: 'Neural semantic segmentation in progress...', detail: 'Detected asphalt sub-base fracture bounding box (140px × 100px)' },
     { stage: 'DEPTH_ESTIMATION', progress: 80, message: 'Shadow stereoscopic gradient depth estimation...', detail: 'Estimated crater depth: 16.8 cm (Exceeds >15cm safety threshold)' },
@@ -33,8 +34,8 @@ export const analyzeDefectImage = async (
 
     const formData = new FormData();
     formData.append('photo', fileBlob, 'defect_image.jpg');
-    formData.append('longitude', '72.8777'); // Mock GPS location
-    formData.append('latitude', '19.0760'); // Mock GPS location
+    formData.append('longitude', location ? location.longitude.toString() : '72.8777');
+    formData.append('latitude', location ? location.latitude.toString() : '19.0760');
 
     const res = await apiClient.post('/complaints', formData, {
       headers: {

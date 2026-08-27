@@ -49,6 +49,8 @@ export const CitizenHome: React.FC = () => {
           let imgPath = c.photo_url || '';
           imgPath = imgPath.replace(/\\/g, '/');
           const imageUrl = imgPath.startsWith('http') ? imgPath : `http://localhost:5000/${imgPath}`;
+          const lat = c.location?.coordinates[1] || 0;
+          const lng = c.location?.coordinates[0] || 0;
 
           return {
             id: c._id.slice(-6).toUpperCase(),
@@ -57,10 +59,10 @@ export const CitizenHome: React.FC = () => {
             severity: (c.severity || 'MEDIUM').toLowerCase() as any,
             status: mapBackendStatus(c.status),
             location: {
-              lat: c.location?.coordinates[1] || 0,
-              lng: c.location?.coordinates[0] || 0,
-              address: 'Community Road',
-              city: 'Mumbai'
+              lat,
+              lng,
+              address: 'Loading location...',
+              city: ''
             },
             imageUrl: imageUrl,
             aiAnalysis: {
@@ -86,7 +88,25 @@ export const CitizenHome: React.FC = () => {
             upvotes: Math.floor(Math.random() * 20) // mock upvotes for visual
           };
         });
-        setReports(mappedReports.slice(0, 10)); // Just show recent 10
+        
+        const slicedReports = mappedReports.slice(0, 10);
+        const enrichedReports = await Promise.all(slicedReports.map(async (r) => {
+           if (r.location.lat !== 0 && r.location.lng !== 0) {
+             try {
+                const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${r.location.lat}&longitude=${r.location.lng}&localityLanguage=en`);
+                const geoData = await res.json();
+                r.location.address = geoData.locality || `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+                r.location.city = geoData.city || geoData.principalSubdivision || '';
+             } catch (e) {
+                r.location.address = `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+             }
+           } else {
+             r.location.address = 'Unknown Location';
+           }
+           return r;
+        }));
+        
+        setReports(enrichedReports); // Just show recent 10
       } catch (err) {
         console.error('Failed to load community reports:', err);
       } finally {

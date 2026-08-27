@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Camera,
@@ -41,6 +41,37 @@ export const ReportDefectFlow: React.FC = () => {
   const [userNotes, setUserNotes] = useState('');
   const [generatedReportId, setGeneratedReportId] = useState('PR-8823-A');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | undefined>(undefined);
+  const [locationStatus, setLocationStatus] = useState<string>('Fetching GPS...');
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+          setLocationStatus('GPS Locked');
+          
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.city || data.locality) {
+                setAddress(`${data.locality ? data.locality + ', ' : ''}${data.city || ''}, ${data.principalSubdivision || ''}`);
+              }
+            })
+            .catch(err => console.error("Reverse geocoding failed", err));
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setLocationStatus('Location access denied');
+        }
+      );
+    } else {
+      setLocationStatus('GPS not supported');
+    }
+  }, []);
 
   // Sample presets for quick testing
   const samplePresets = [
@@ -71,7 +102,7 @@ export const ReportDefectFlow: React.FC = () => {
     setStep('scanning');
 
     try {
-      const result = await analyzeDefectImage(file || imageSrc, (stage) => {
+      const result = await analyzeDefectImage(file || imageSrc, userLocation, (stage) => {
         setScanProgress(stage);
       });
       setAiAnalysis(result);
