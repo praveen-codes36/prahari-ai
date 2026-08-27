@@ -68,12 +68,6 @@ export const analyzeDefectImage = async (
         distanceMeters: 40,
         matchConfidence: data.duplicate_similarity_score || 88,
       } : undefined,
-      reasoning: {
-        edgeDetection: 'High-contrast boundary identified indicating structural rupture of top asphalt layer.',
-        depthEstimation: 'Shadow gradient analysis confirms depth exceeds threshold.',
-        trafficCorrelation: 'High-density urban commuter artery with heavy transit volume.',
-        pedestrianRisk: 'Severe skid hazard for two-wheelers and pedestrians in wet monsoon conditions.',
-      },
     };
   } catch (error) {
     console.error('Defect analysis failed', error);

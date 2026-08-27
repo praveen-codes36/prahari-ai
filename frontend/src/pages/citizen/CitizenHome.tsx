@@ -27,12 +27,18 @@ export const CitizenHome: React.FC = () => {
   const userName = session?.user?.name || 'Citizen';
   const [reports, setReports] = useState<DefectReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeAlerts, setActiveAlerts] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchCommunityReports = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const res = await apiClient.get('/complaints');
-        const data = res.data.data || [];
+        const [reportsRes, alertsRes] = await Promise.all([
+          apiClient.get('/map/defects'),
+          apiClient.get('/alerts/active')
+        ]);
+        
+        const data = reportsRes.data?.data || [];
+        setActiveAlerts(alertsRes.data?.data || []);
         
         const mapBackendStatus = (status: string): ReportStatus => {
           switch(status) {
@@ -108,12 +114,12 @@ export const CitizenHome: React.FC = () => {
         
         setReports(enrichedReports); // Just show recent 10
       } catch (err) {
-        console.error('Failed to load community reports:', err);
+        console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCommunityReports();
+    fetchDashboardData();
   }, []);
 
   const handleUpvote = (id: string, e: React.MouseEvent) => {
@@ -126,7 +132,7 @@ export const CitizenHome: React.FC = () => {
   // Dynamic Radar Stats based on fetched community reports
   const criticalIssuesCount = reports.filter(r => r.severity === 'critical' || r.severity === 'high').length;
   const darkZonesCount = reports.filter(r => r.defectType === 'streetlight').length;
-  const avgHealth = Math.max(12, 100 - (reports.length * 7)); // Simulated dynamic health score based on active local issues
+  const activeAlertsCount = activeAlerts.length;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20 pt-2">
@@ -150,15 +156,37 @@ export const CitizenHome: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => navigate('/citizen/report-defect')}
-            className="self-start md:self-auto flex items-center gap-2.5 px-5 py-3 rounded-xl bg-[#b3c5ff] hover:bg-[#dae1ff] text-[#002b75] font-bold text-sm shadow-[0_0_20px_rgba(179,197,255,0.4)] active:scale-95 transition-all"
-          >
-            <Camera className="w-5 h-5 stroke-[2.5]" />
-            Report Road Hazard
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <button
+              onClick={() => navigate('/citizen/report-defect')}
+              className="w-full md:w-auto flex justify-center items-center gap-2.5 px-5 py-3 rounded-xl bg-[#b3c5ff] hover:bg-[#dae1ff] text-[#002b75] font-bold text-sm shadow-[0_0_20px_rgba(179,197,255,0.4)] active:scale-95 transition-all"
+            >
+              <Camera className="w-5 h-5 stroke-[2.5]" />
+              Report Road Hazard
+            </button>
+            <button
+              onClick={() => navigate('/citizen/report-accident')}
+              className="w-full md:w-auto flex justify-center items-center gap-2.5 px-5 py-3 rounded-xl bg-[#ff5252] hover:bg-[#ff7b7b] text-white font-bold text-sm shadow-[0_0_20px_rgba(255,82,82,0.4)] active:scale-95 transition-all"
+            >
+              <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+              Report Accident
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Real-time Safety Alerts Ticker */}
+      {activeAlerts.length > 0 && (
+        <div className="bg-[#93000a]/20 border border-[#ffb4ab]/40 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+           <div className="flex items-center gap-2 text-[#ffb4ab] shrink-0">
+              <AlertTriangle className="w-4 h-4 animate-pulse" />
+              <span className="font-bold text-xs uppercase tracking-widest font-mono">Safety Alert</span>
+           </div>
+           <div className="text-xs text-[#ffdad6] font-mono leading-relaxed line-clamp-1">
+             {activeAlerts[0].title || "Emergency conditions active on nearby routes."} - {activeAlerts[0].description || "Please use caution."}
+           </div>
+        </div>
+      )}
 
       {/* Quick Action & Radar Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,9 +219,12 @@ export const CitizenHome: React.FC = () => {
               <div className="text-base font-bold text-[#ffa000]">{darkZonesCount}</div>
               <div className="text-[9px] font-mono text-[#8c90a1]">Dark Zones</div>
             </div>
-            <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
-              <div className="text-base font-bold text-[#00daf3]">{avgHealth}/100</div>
-              <div className="text-[9px] font-mono text-[#8c90a1]">Avg Health</div>
+            <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5 relative overflow-hidden">
+              <div className={`text-base font-bold ${activeAlertsCount > 0 ? 'text-[#ff5252] animate-pulse' : 'text-[#00daf3]'}`}>
+                {activeAlertsCount}
+              </div>
+              <div className="text-[9px] font-mono text-[#8c90a1]">Active Alerts</div>
+              {activeAlertsCount > 0 && <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#ff5252]" />}
             </div>
           </div>
 

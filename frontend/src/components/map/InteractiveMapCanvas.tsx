@@ -91,39 +91,73 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
   useEffect(() => {
     const fetchSegments = async () => {
       try {
-        const res = await apiClient.get('/roads/health-scores');
-        const data = res.data?.data;
-        if (data && data.length > 0) {
-          const mapped: RoadSegment[] = data.map((item: any) => ({
-            id: item._id || item.road_segment_id,
-            name: item.road_name,
-            district: 'Local District',
-            city: 'Mapped City',
-            lengthKm: 5.0,
-            healthScore: item.health_score,
-            riskLevel: item.health_score < 40 ? 'critical' : item.health_score < 70 ? 'high' : 'low',
-            accidentHistoryCount: item.factors?.accident_history || 0,
-            lightingStatus: item.factors?.lighting > 20 ? 'Good' : 'Poor',
-            trafficVolume: 'Moderate',
-            vehiclesPerDay: 15000,
-            activeAnomaliesCount: item.factors?.potholes || 0,
-            lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
-            coordinates: {
-              lat: item.coordinates ? item.coordinates[1] : (19.0760 + (Math.random() - 0.5) * 0.1), 
-              lng: item.coordinates ? item.coordinates[0] : (72.8777 + (Math.random() - 0.5) * 0.1)
+        if (isAuthorityMode) {
+          const res = await apiClient.get('/roads/health-scores');
+          const data = res.data?.data;
+          if (data && data.length > 0) {
+            const mapped: RoadSegment[] = data.map((item: any) => ({
+              id: item._id || item.road_segment_id,
+              name: item.road_name,
+              district: 'Local District',
+              city: 'Mapped City',
+              lengthKm: 5.0,
+              healthScore: item.health_score,
+              riskLevel: item.health_score < 40 ? 'critical' : item.health_score < 70 ? 'high' : 'low',
+              accidentHistoryCount: item.factors?.accident_history || 0,
+              lightingStatus: item.factors?.lighting > 20 ? 'Good' : 'Poor',
+              trafficVolume: 'Moderate',
+              vehiclesPerDay: 15000,
+              activeAnomaliesCount: item.factors?.potholes || 0,
+              lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
+              coordinates: {
+                lat: item.coordinates ? item.coordinates[1] : (19.0760 + (Math.random() - 0.5) * 0.1), 
+                lng: item.coordinates ? item.coordinates[0] : (72.8777 + (Math.random() - 0.5) * 0.1)
+              }
+            }));
+            setSegments(mapped);
+            if (!selectedSegment || !mapped.find(m => m.id === selectedSegment?.id)) {
+               setSelectedSegment(mapped[0]);
             }
-          }));
-          setSegments(mapped);
-          if (!selectedSegment || !mapped.find(m => m.id === selectedSegment?.id)) {
-             setSelectedSegment(mapped[0]);
+          }
+        } else {
+          // Citizen Mode: Fetch from map layers (defects/hotspots) instead of authority health scores
+          const res = await apiClient.get('/map/defects');
+          const data = res.data?.data;
+          if (data && data.length > 0) {
+            const mapped: RoadSegment[] = data.map((item: any) => ({
+              id: item._id,
+              name: item.defect_type || 'Reported Issue',
+              district: 'Citizen Report',
+              city: 'Mapped City',
+              lengthKm: 0.1,
+              healthScore: item.severity === 'CRITICAL' ? 20 : item.severity === 'HIGH' ? 45 : 85,
+              riskLevel: (item.severity || 'LOW').toLowerCase(),
+              accidentHistoryCount: 0,
+              lightingStatus: 'Unknown',
+              trafficVolume: 'Unknown',
+              vehiclesPerDay: 0,
+              activeAnomaliesCount: 1,
+              lastScanned: 'Recent',
+              coordinates: {
+                lat: item.location?.coordinates ? item.location.coordinates[1] : (19.0760 + (Math.random() - 0.5) * 0.1), 
+                lng: item.location?.coordinates ? item.location.coordinates[0] : (72.8777 + (Math.random() - 0.5) * 0.1)
+              }
+            }));
+            setSegments(mapped);
+            if (!selectedSegment || !mapped.find(m => m.id === selectedSegment?.id)) {
+               setSelectedSegment(mapped[0]);
+            }
+          } else {
+            // fallback if no real defects
+            setSegments(MOCK_ROAD_SEGMENTS);
           }
         }
       } catch (err) {
-        console.error('Failed to fetch road health scores:', err);
+        console.error('Failed to fetch map data:', err);
       }
     };
     fetchSegments();
-  }, []);
+  }, [isAuthorityMode]);
 
   // Filter items
   const filteredSegments = segments.filter((s) => {

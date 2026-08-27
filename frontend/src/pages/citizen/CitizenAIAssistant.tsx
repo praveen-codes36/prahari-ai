@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, Send, Sparkles, Shield, MapPin, AlertCircle, ArrowRight, User } from 'lucide-react';
-import { executeCopilotQuery, CopilotQueryResponse } from '../../services/aiCopilotService';
+import { sendCitizenChatMessage, getCitizenChatHistory, ChatbotMessage } from '../../services/aiChatbotService';
 
 export const CitizenAIAssistant: React.FC = () => {
-  const [messages, setMessages] = useState<
-    { role: 'user' | 'assistant'; text: string; data?: CopilotQueryResponse }[]
-  >([
+  const [messages, setMessages] = useState<ChatbotMessage[]>([
     {
-      role: 'assistant',
+      sender: 'BOT',
       text: 'Hello Aarav! I am Prahari Citizen AI Safety Assistant. Ask me about road conditions, flood-prone choke points, active pothole repair zones, or safe commute routes.',
+      created_at: new Date().toISOString()
     },
   ]);
   const [inputQuery, setInputQuery] = useState('');
@@ -21,27 +20,43 @@ export const CitizenAIAssistant: React.FC = () => {
     'What should I do if I spot a large sinkhole?',
   ];
 
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const history = await getCitizenChatHistory();
+        if (history && history.length > 0) {
+          // If there's existing history, we can optionally load the most recent conversation
+          const latestConvo = history[history.length - 1];
+          if (latestConvo && latestConvo.messages && latestConvo.messages.length > 0) {
+             setMessages(latestConvo.messages);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   const handleSend = async (queryText?: string) => {
     const q = queryText || inputQuery;
     if (!q.trim() || isLoading) return;
 
-    const userMessage = { role: 'user' as const, text: q };
+    const userMessage: ChatbotMessage = { sender: 'USER', text: q, created_at: new Date().toISOString() };
     setMessages((prev) => [...prev, userMessage]);
     setInputQuery('');
     setIsLoading(true);
 
     try {
-      const response = await executeCopilotQuery(q);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: response.response,
-          data: response,
-        },
-      ]);
+      const response = await sendCitizenChatMessage(q);
+      setMessages((prev) => [...prev, response.reply]);
     } catch (error) {
       console.error(error);
+      setMessages((prev) => [...prev, {
+        sender: 'BOT',
+        text: 'Sorry, I am having trouble connecting to the system right now.',
+        created_at: new Date().toISOString()
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -88,38 +103,30 @@ export const CitizenAIAssistant: React.FC = () => {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+            className={`flex items-start gap-3 ${msg.sender === 'USER' ? 'flex-row-reverse' : ''}`}
           >
             <div
               className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${
-                msg.role === 'user'
+                msg.sender === 'USER'
                   ? 'bg-[#b3c5ff] text-[#002b75]'
                   : 'bg-[#00e3fd]/20 text-[#00daf3] border border-[#00e3fd]/40'
               }`}
             >
-              {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+              {msg.sender === 'USER' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
 
             <div
               className={`max-w-[85%] rounded-2xl p-4 text-xs md:text-sm leading-relaxed shadow-lg ${
-                msg.role === 'user'
+                msg.sender === 'USER'
                   ? 'bg-[#0066ff] text-white rounded-tr-none'
                   : 'bg-[#191f2f] text-[#dde2f8] border border-white/10 rounded-tl-none'
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.text}</div>
-
-              {msg.data?.keyInsights && (
-                <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
-                  <div className="text-[11px] font-mono text-[#00daf3] font-bold uppercase">
-                    AI Telemetry Insights:
-                  </div>
-                  {msg.data.keyInsights.map((insight, iIdx) => (
-                    <div key={iIdx} className="text-xs text-[#c2c6d8] flex items-center gap-1.5 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00daf3]" />
-                      <span>{insight}</span>
-                    </div>
-                  ))}
+              
+              {msg.attachment_url && (
+                <div className="mt-3">
+                  <img src={msg.attachment_url.startsWith('http') ? msg.attachment_url : `http://localhost:5000/${msg.attachment_url}`} alt="Attachment" className="max-w-full rounded-lg" />
                 </div>
               )}
             </div>

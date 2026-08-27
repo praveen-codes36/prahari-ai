@@ -54,11 +54,14 @@ export const ReportDefectFlow: React.FC = () => {
           });
           setLocationStatus('GPS Locked');
           
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`)
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
             .then(res => res.json())
             .then(data => {
-              if (data.city || data.locality) {
-                setAddress(`${data.locality ? data.locality + ', ' : ''}${data.city || ''}, ${data.principalSubdivision || ''}`);
+              if (data.display_name) {
+                setAddress(data.display_name);
+              } else if (data.address) {
+                const addr = data.address;
+                setAddress(`${addr.road || addr.suburb || ''}, ${addr.city || addr.town || ''}, ${addr.state || ''}, ${addr.country || ''}`.replace(/^, /, ''));
               }
             })
             .catch(err => console.error("Reverse geocoding failed", err));
@@ -349,6 +352,7 @@ export const ReportDefectFlow: React.FC = () => {
             </div>
 
             {/* Algorithmic Reasoning Breakdown Accordion / Section */}
+            {aiAnalysis.reasoning && (
             <div className="mt-6 pt-5 border-t border-white/10 space-y-3">
               <h4 className="text-xs font-mono uppercase text-[#8c90a1] tracking-wider flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-[#00daf3]" />
@@ -385,6 +389,7 @@ export const ReportDefectFlow: React.FC = () => {
                 </div>
               </div>
             </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3">

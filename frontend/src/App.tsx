@@ -9,6 +9,7 @@ import { authService, ROLE_PRESETS } from './services/authService';
 import { CitizenHome } from './pages/citizen/CitizenHome';
 import { RoadRiskMapPage } from './pages/citizen/RoadRiskMapPage';
 import { ReportDefectFlow } from './pages/citizen/ReportDefectFlow';
+import { ReportAccidentPage } from './pages/citizen/ReportAccidentPage';
 import { MyReportsPage } from './pages/citizen/MyReportsPage';
 import { CitizenAIAssistant } from './pages/citizen/CitizenAIAssistant';
 
@@ -88,6 +89,7 @@ export function App() {
             <Route index element={<CitizenHome />} />
             <Route path="risk-map" element={<RoadRiskMapPage />} />
             <Route path="report-defect" element={<ReportDefectFlow />} />
+            <Route path="report-accident" element={<ReportAccidentPage />} />
             <Route path="my-reports" element={<MyReportsPage />} />
             <Route path="reports/:id" element={<MyReportsPage />} />
             <Route path="assistant" element={<CitizenAIAssistant />} />

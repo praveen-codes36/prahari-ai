@@ -46,7 +46,7 @@ export interface AIDefectAnalysis {
     distanceMeters: number;
     matchConfidence: number;
   };
-  reasoning: {
+  reasoning?: {
     edgeDetection: string;
     depthEstimation: string;
     trafficCorrelation: string;
