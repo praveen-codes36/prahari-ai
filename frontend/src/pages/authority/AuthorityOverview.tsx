@@ -1,72 +1,87 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Activity,
-  AlertOctagon,
-  CheckCircle2,
-  TrendingUp,
-  AlertTriangle,
-  ChevronRight,
-  Bot,
-  MapPin,
-  Clock,
-  Shield,
-  Layers,
-  Sparkles,
-  BarChart3,
-  Calendar,
-  Radio,
-  Truck,
-  Wrench,
-  FileCheck2,
-  Cpu,
-  ArrowUpRight,
-  ArrowDownRight,
-  Zap,
-} from 'lucide-react';
-import { StatCard } from '../../components/common/StatCard';
-import { SeverityBadge, StatusBadge } from '../../components/common/Badges';
-import {
-  MOCK_ROAD_SEGMENTS,
-  MOCK_PRIORITY_QUEUE,
-  MOCK_REPORTS,
-  MOCK_EMERGENCY_INCIDENTS,
-  MOCK_WORK_ORDERS,
-  MOCK_FIELD_TEAMS,
-  MOCK_PREDICTIVE_ASSETS,
-} from '../../data/mockData';
+import axios from 'axios';
+
+interface OverviewData {
+  kpis: {
+    criticalAssets: number;
+    activeIncidents: number;
+    predictiveRisks: number;
+    fieldTeamsActive: number;
+    openWorkOrders: number;
+    avgResponseTime: number;
+  };
+  urgentFeed: Array<{
+    id: string;
+    rank: number;
+    roadName: string;
+    triageScore: number;
+    reasoning: { severityIndex: { text: string } };
+    estimatedRepairCost: string;
+    aiConfidence: number;
+    p1Deadline: string;
+  }>;
+  chartData: Array<{
+    label: string;
+    count: number;
+    critical: number;
+    prevented: number;
+  }>;
+}
 
 export const AuthorityOverview: React.FC = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'1W' | '1M' | '1Y'>('1M');
   const [activeChartBar, setActiveChartBar] = useState<number | null>(null);
+  
+  const [overviewData, setOverviewData] = useState<OverviewData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Dynamic Chart Data based on time range
-  const chartData = {
-    '1W': [
-      { label: 'Mon', count: 42, critical: 8, prevented: 3 },
-      { label: 'Tue', count: 58, critical: 12, prevented: 5 },
-      { label: 'Wed', count: 65, critical: 15, prevented: 6 },
-      { label: 'Thu', count: 88, critical: 24, prevented: 9 },
-      { label: 'Fri', count: 94, critical: 28, prevented: 12 },
-      { label: 'Sat', count: 72, critical: 18, prevented: 8 },
-      { label: 'Sun', count: 54, critical: 11, prevented: 4 },
-    ],
-    '1M': [
-      { label: 'Week 1', count: 320, critical: 68, prevented: 24 },
-      { label: 'Week 2', count: 450, critical: 92, prevented: 38 },
-      { label: 'Week 3', count: 580, critical: 142, prevented: 62 },
-      { label: 'Week 4', count: 620, critical: 154, prevented: 74 },
-    ],
-    '1Y': [
-      { label: 'Q1', count: 2400, critical: 480, prevented: 180 },
-      { label: 'Q2', count: 3800, critical: 890, prevented: 340 },
-      { label: 'Q3', count: 4900, critical: 1240, prevented: 510 },
-      { label: 'Q4', count: 3108, critical: 630, prevented: 290 },
-    ],
-  }[timeRange];
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await axios.get(`${apiUrl}/api/authority/overview`, {
+          params: { timeRange }
+        });
+        if (response.data.success) {
+          setOverviewData(response.data.data);
+        } else {
+          setError(response.data.message || 'Failed to load data');
+        }
+      } catch (err) {
+        console.error('Error fetching overview data:', err);
+        setError('Failed to connect to server');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [timeRange]);
 
-  const maxChartCount = Math.max(...chartData.map((d) => d.count));
+  const chartData = overviewData?.chartData || [];
+  const maxChartCount = chartData.length > 0 ? Math.max(...chartData.map((d) => d.count)) : 100;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-red-400">
+        <AlertTriangle className="w-12 h-12 mb-4" />
+        <h2 className="text-xl font-bold">Error Loading Command Center</h2>
+        <p className="text-sm mt-2">{error}</p>
+        <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-500/20 rounded-lg border border-red-500/40">Retry</button>
+      </div>
+    );
+  }
+
+  if (isLoading && !overviewData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-[#00e3fd]">
+        <Activity className="w-12 h-12 mb-4 animate-spin" />
+        <h2 className="text-xl font-bold font-mono">SYNCHRONIZING SYSTEMS...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20 pt-1">
@@ -131,11 +146,11 @@ export const AuthorityOverview: React.FC = () => {
             <AlertOctagon className="w-3.5 h-3.5 text-red-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-red-400 transition-colors">
-            24
+            {overviewData ? overviewData.kpis.criticalAssets : '-'}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-red-400 mt-1">
             <ArrowUpRight className="w-3 h-3" />
-            <span>+8.2% this week (Increasing)</span>
+            <span>Live Scan</span>
           </div>
         </div>
 
@@ -149,11 +164,11 @@ export const AuthorityOverview: React.FC = () => {
             <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-amber-400 transition-colors">
-            08
+            {overviewData ? (overviewData.kpis.activeIncidents < 10 ? '0' + overviewData.kpis.activeIncidents : overviewData.kpis.activeIncidents) : '-'}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-amber-400 mt-1">
             <ArrowDownRight className="w-3 h-3 text-emerald-400" />
-            <span>3 Critical · 5 High</span>
+            <span>Currently Tracked</span>
           </div>
         </div>
 
@@ -167,11 +182,11 @@ export const AuthorityOverview: React.FC = () => {
             <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-cyan-400 transition-colors">
-            37
+            {overviewData ? overviewData.kpis.predictiveRisks : '-'}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-cyan-400 mt-1">
             <Zap className="w-3 h-3" />
-            <span>90d Forecast Curve</span>
+            <span>High Risk Forecast</span>
           </div>
         </div>
 
@@ -185,10 +200,10 @@ export const AuthorityOverview: React.FC = () => {
             <Truck className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-emerald-400 transition-colors">
-            16
+            {overviewData ? overviewData.kpis.fieldTeamsActive : '-'}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 mt-1">
-            <span>100% capacity deployed</span>
+            <span>Dispatched Units</span>
           </div>
         </div>
 
@@ -202,10 +217,10 @@ export const AuthorityOverview: React.FC = () => {
             <FileCheck2 className="w-3.5 h-3.5 text-blue-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-blue-400 transition-colors">
-            42
+            {overviewData ? overviewData.kpis.openWorkOrders : '-'}
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-blue-300 mt-1">
-            <span>12 completed today</span>
+            <span>Requires Action</span>
           </div>
         </div>
 
@@ -219,7 +234,7 @@ export const AuthorityOverview: React.FC = () => {
             <Clock className="w-3.5 h-3.5 text-purple-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-purple-400 transition-colors">
-            12.4 <span className="text-xs font-normal text-slate-400">min</span>
+            {overviewData ? overviewData.kpis.avgResponseTime : '-'} <span className="text-xs font-normal text-slate-400">min</span>
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 mt-1">
             <Sparkles className="w-3 h-3 text-cyan-400" />
@@ -294,9 +309,15 @@ export const AuthorityOverview: React.FC = () => {
 
             {/* Custom Bar Visualization */}
             <div className="h-56 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-slate-800">
+              {chartData.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-sm font-mono text-slate-500 z-10">
+                  No incident data for this time period
+                </div>
+              )}
               {chartData.map((item, index) => {
                 const totalHeight = (item.count / maxChartCount) * 100;
-                const criticalHeight = (item.critical / item.count) * 100;
+                const criticalHeight = item.count > 0 ? (item.critical / item.count) * 100 : 0;
+                const preventedHeight = item.count > 0 ? (item.prevented / item.count) * 100 : 0;
                 const isHovered = activeChartBar === index;
 
                 return (
@@ -319,7 +340,7 @@ export const AuthorityOverview: React.FC = () => {
                       {/* Prevented sub-bar */}
                       <div
                         className="w-full bg-emerald-500/80 transition-all"
-                        style={{ height: `${(item.prevented / item.count) * 100}%` }}
+                        style={{ height: `${preventedHeight}%` }}
                       />
                       {/* Critical sub-bar */}
                       <div
@@ -408,8 +429,18 @@ export const AuthorityOverview: React.FC = () => {
             </div>
 
             {/* List of top items */}
-            <div className="space-y-3">
-              {MOCK_PRIORITY_QUEUE.slice(0, 3).map((item) => (
+            <div className="space-y-3 relative min-h-[200px]">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Activity className="w-6 h-6 text-cyan-400 animate-spin" />
+                </div>
+              )}
+              {!isLoading && (!overviewData?.urgentFeed || overviewData.urgentFeed.length === 0) && (
+                <div className="p-4 text-center text-sm font-mono text-slate-500 border border-slate-800 rounded-xl bg-slate-900/50">
+                  No urgent priority tasks in queue.
+                </div>
+              )}
+              {!isLoading && overviewData?.urgentFeed.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => navigate('/authority/priority')}

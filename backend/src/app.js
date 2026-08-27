@@ -14,6 +14,7 @@ import internalRouter from "./routes/internal.route.js"
 import complaintsRouter from "./routes/complaints.routes.js";
 import departmentsRouter from "./routes/departments.route.js";
 import copilotRouter from "./routes/copilot.route.js";
+import authorityRouter from "./routes/authority.route.js";
 const app = express()
 
 // basic configurations
@@ -47,6 +48,7 @@ app.use("/api/emergency", emergencyRouter)        // Feature 3 (routing) + Featu
 app.use("/api/roads", roadHealthRouter)           // Feature 8
 app.use("/api/chatbot/citizen", chatbotRouter)    // Feature 11
 app.use("/api/internal", internalRouter)          // Cron / service-to-service endpoints
+app.use("/api/authority", authorityRouter)
 
 import riskRouter from "./routes/risk.route.js"
 import mapRouter from "./routes/map.route.js"
