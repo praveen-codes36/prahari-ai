@@ -19,9 +19,12 @@ import { SeverityBadge, StatusBadge } from '../../components/common/Badges';
 import { MOCK_REPORTS, MOCK_ROAD_SEGMENTS } from '../../data/mockData';
 import { DefectReport, ReportStatus } from '../../types';
 import apiClient from '../../services/apiClient';
+import { authService } from '../../services/authService';
 
 export const CitizenHome: React.FC = () => {
   const navigate = useNavigate();
+  const session = authService.getSession();
+  const userName = session?.user?.name || 'Citizen';
   const [reports, setReports] = useState<DefectReport[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,6 +103,11 @@ export const CitizenHome: React.FC = () => {
     );
   };
 
+  // Dynamic Radar Stats based on fetched community reports
+  const criticalIssuesCount = reports.filter(r => r.severity === 'critical' || r.severity === 'high').length;
+  const darkZonesCount = reports.filter(r => r.defectType === 'streetlight').length;
+  const avgHealth = Math.max(12, 100 - (reports.length * 7)); // Simulated dynamic health score based on active local issues
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20 pt-2">
       {/* Top Welcome & Telemetry Card */}
@@ -115,7 +123,7 @@ export const CitizenHome: React.FC = () => {
               <span className="text-[11px] font-mono text-[#8c90a1]">GPS Active: Mumbai</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-              Welcome, Aarav Sharma
+              Welcome, {userName}
             </h1>
             <p className="text-xs md:text-sm text-[#8c90a1] mt-1">
               Your reports help AI route emergency ambulances & prioritize municipal road repairs.
@@ -156,15 +164,15 @@ export const CitizenHome: React.FC = () => {
 
           <div className="grid grid-cols-3 gap-2 my-3 text-center">
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
-              <div className="text-base font-bold text-[#ffb4ab]">3</div>
-              <div className="text-[9px] font-mono text-[#8c90a1]">Critical Potholes</div>
+              <div className="text-base font-bold text-[#ffb4ab]">{criticalIssuesCount}</div>
+              <div className="text-[9px] font-mono text-[#8c90a1]">Critical Issues</div>
             </div>
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
-              <div className="text-base font-bold text-[#ffa000]">1</div>
-              <div className="text-[9px] font-mono text-[#8c90a1]">Dark Zone</div>
+              <div className="text-base font-bold text-[#ffa000]">{darkZonesCount}</div>
+              <div className="text-[9px] font-mono text-[#8c90a1]">Dark Zones</div>
             </div>
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
-              <div className="text-base font-bold text-[#00daf3]">34/100</div>
+              <div className="text-base font-bold text-[#00daf3]">{avgHealth}/100</div>
               <div className="text-[9px] font-mono text-[#8c90a1]">Avg Health</div>
             </div>
           </div>
