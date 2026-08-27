@@ -95,15 +95,8 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
   const totalResults =
     filteredRoads.length + filteredIncidents.length + filteredWorkOrders.length + filteredTeams.length;
 
-  const handleRoleSelect = (role: UserRole) => {
-    authService.switchRole(role);
-    onRoleChange(role);
-    setIsRoleDropdownOpen(false);
-    if (role === 'citizen') navigate('/citizen');
-    else if (role === 'authority') navigate('/authority');
-    else if (role === 'maintenance') navigate('/authority/maintenance-command');
-    else if (role === 'emergency') navigate('/authority/emergency-ops');
-  };
+  // Role switching is disabled in strict authentication mode
+  // Users must logout and login again to change roles.
 
   const handleLogout = () => {
     authService.logout();
@@ -423,83 +416,26 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
           )}
         </div>
 
-        {/* Role Switcher Button & Dropdown */}
+        {/* User Profile / Logout */}
         <div className="relative">
           <button
             onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0e1626] hover:bg-slate-800 border border-slate-700/80 text-xs font-bold text-white transition-all shadow-sm"
           >
             <div className="w-2 h-2 rounded-full bg-[#00e3fd]"></div>
-            <span className="hidden sm:inline capitalize">{currentRole} Mode</span>
+            <span className="hidden sm:inline capitalize">{currentRole}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
           {isRoleDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-2 z-50 space-y-1">
+            <div className="absolute right-0 mt-2 w-48 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-2 z-50 space-y-1">
               <div className="px-2 py-1 text-[10px] font-mono text-slate-400 uppercase">
-                SWITCH ECOSYSTEM ROLE
+                ACTIVE SESSION
               </div>
-
-              <button
-                onClick={() => handleRoleSelect('authority')}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-left transition-colors ${
-                  currentRole === 'authority'
-                    ? 'bg-blue-600/30 text-cyan-300 border border-cyan-500/30'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <div>
-                  <div>Authority Command HQ</div>
-                  <div className="text-[10px] text-slate-400 font-normal">PWD / NHAI Executive</div>
-                </div>
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              </button>
-
-              <button
-                onClick={() => handleRoleSelect('emergency')}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-left transition-colors ${
-                  currentRole === 'emergency'
-                    ? 'bg-red-600/30 text-red-300 border border-red-500/30'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <div>
-                  <div>Emergency Ops Dispatcher</div>
-                  <div className="text-[10px] text-slate-400 font-normal">Corridor & Signal Preempt</div>
-                </div>
-                <Radio className="w-4 h-4 text-red-400" />
-              </button>
-
-              <button
-                onClick={() => handleRoleSelect('maintenance')}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-left transition-colors ${
-                  currentRole === 'maintenance'
-                    ? 'bg-amber-600/30 text-amber-300 border border-amber-500/30'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <div>
-                  <div>Field Squad & Crew Lead</div>
-                  <div className="text-[10px] text-slate-400 font-normal">Work Orders & Inspections</div>
-                </div>
-                <Wrench className="w-4 h-4 text-amber-400" />
-              </button>
-
-              <button
-                onClick={() => handleRoleSelect('citizen')}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-semibold text-left transition-colors ${
-                  currentRole === 'citizen'
-                    ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <div>
-                  <div>Citizen Reporting Portal</div>
-                  <div className="text-[10px] text-slate-400 font-normal">Public Hazard Submission</div>
-                </div>
-                <User className="w-4 h-4 text-emerald-400" />
-              </button>
-
+              <div className="px-2 py-1 text-xs text-white capitalize font-bold">
+                 Role: {currentRole}
+              </div>
+              
               <div className="pt-1.5 mt-1.5 border-t border-slate-800">
                 <button
                   onClick={handleLogout}
@@ -507,9 +443,8 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                 >
                   <div className="flex items-center gap-2">
                     <LogOut className="w-3.5 h-3.5 text-red-400" />
-                    <span>TERMINAL LOGOUT</span>
+                    <span>LOGOUT</span>
                   </div>
-                  <span className="text-[9px] text-slate-400">/login</span>
                 </button>
               </div>
             </div>

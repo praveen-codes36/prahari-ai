@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Camera,
@@ -17,10 +17,81 @@ import {
 } from 'lucide-react';
 import { SeverityBadge, StatusBadge } from '../../components/common/Badges';
 import { MOCK_REPORTS, MOCK_ROAD_SEGMENTS } from '../../data/mockData';
+import { DefectReport, ReportStatus } from '../../types';
+import apiClient from '../../services/apiClient';
 
 export const CitizenHome: React.FC = () => {
   const navigate = useNavigate();
-  const [reports, setReports] = useState(MOCK_REPORTS);
+  const [reports, setReports] = useState<DefectReport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCommunityReports = async () => {
+      try {
+        const res = await apiClient.get('/complaints');
+        const data = res.data.data || [];
+        
+        const mapBackendStatus = (status: string): ReportStatus => {
+          switch(status) {
+            case 'REPORTED': return 'submitted';
+            case 'AI_VERIFIED': return 'verified';
+            case 'ASSIGNED': return 'assigned';
+            case 'WORK_IN_PROGRESS': return 'in_progress';
+            case 'RESOLVED': return 'resolved';
+            default: return 'submitted';
+          }
+        };
+
+        const mappedReports: DefectReport[] = data.map((c: any) => {
+          let imgPath = c.photo_url || '';
+          imgPath = imgPath.replace(/\\/g, '/');
+          const imageUrl = imgPath.startsWith('http') ? imgPath : `http://localhost:5000/${imgPath}`;
+
+          return {
+            id: c._id.slice(-6).toUpperCase(),
+            title: `${(c.defect_type || 'Unknown').replace('_', ' ')} Detected`,
+            defectType: (c.defect_type || 'OTHER').toLowerCase() as any,
+            severity: (c.severity || 'MEDIUM').toLowerCase() as any,
+            status: mapBackendStatus(c.status),
+            location: {
+              lat: c.location?.coordinates[1] || 0,
+              lng: c.location?.coordinates[0] || 0,
+              address: 'Community Road',
+              city: 'Mumbai'
+            },
+            imageUrl: imageUrl,
+            aiAnalysis: {
+              defectType: (c.defect_type || 'OTHER').toLowerCase() as any,
+              defectName: c.defect_type || 'Unknown',
+              confidence: c.confidence_score || 0,
+              severity: (c.severity || 'MEDIUM').toLowerCase() as any,
+              riskScore: c.confidence_score || 0,
+              departmentRouting: c.assigned_department_id?.name || 'Pending',
+              priorityLevel: 'P3',
+              reasoning: {
+                edgeDetection: '',
+                depthEstimation: '',
+                trafficCorrelation: '',
+                pedestrianRisk: ''
+              }
+            },
+            reportedAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            reportedBy: { name: 'Citizen', isAnonymous: false },
+            timeline: [],
+            commentsCount: 0,
+            upvotes: Math.floor(Math.random() * 20) // mock upvotes for visual
+          };
+        });
+        setReports(mappedReports.slice(0, 10)); // Just show recent 10
+      } catch (err) {
+        console.error('Failed to load community reports:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCommunityReports();
+  }, []);
 
   const handleUpvote = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

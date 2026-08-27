@@ -18,4 +18,16 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // If token is invalid/expired (or an old mock token is lingering), force logout
+      authService.logout();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;

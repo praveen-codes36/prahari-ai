@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -63,7 +63,7 @@ export function App() {
           <Route index element={<RootRedirect />} />
           
           {/* Authority Perspective Routes */}
-          <Route path="authority">
+          <Route path="authority" element={<ProtectedRoute allowedRoles={['authority']}><Outlet /></ProtectedRoute>}>
             <Route index element={<AuthorityOverview />} />
             <Route path="risk-intel" element={<AIRiskIntelligencePage />} />
             <Route path="priority" element={<RepairPriorityQueue />} />
@@ -84,7 +84,7 @@ export function App() {
           </Route>
 
           {/* Citizen Perspective Routes */}
-          <Route path="citizen">
+          <Route path="citizen" element={<ProtectedRoute allowedRoles={['citizen']}><Outlet /></ProtectedRoute>}>
             <Route index element={<CitizenHome />} />
             <Route path="risk-map" element={<RoadRiskMapPage />} />
             <Route path="report-defect" element={<ReportDefectFlow />} />
@@ -94,8 +94,8 @@ export function App() {
           </Route>
 
           {/* Direct Role Aliases */}
-          <Route path="emergency" element={<EmergencyOperations />} />
-          <Route path="maintenance" element={<MaintenanceCommandCenter />} />
+          <Route path="emergency" element={<ProtectedRoute allowedRoles={['emergency']}><EmergencyOperations /></ProtectedRoute>} />
+          <Route path="maintenance" element={<ProtectedRoute allowedRoles={['maintenance']}><MaintenanceCommandCenter /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<RootRedirect />} />

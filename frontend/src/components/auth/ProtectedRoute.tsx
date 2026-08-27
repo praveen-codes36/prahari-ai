@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { authService } from '../../services/authService';
+import { authService, ROLE_PRESETS } from '../../services/authService';
 import { UserRole } from '../../types';
 
 interface ProtectedRouteProps {
@@ -17,6 +17,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If specific roles are required, verify access or allow role flexibility in demo mode
+  const currentRole = authService.getCurrentRole();
+
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
+    // Redirect to the role's default dashboard if not authorized
+    const targetRoute = ROLE_PRESETS[currentRole]?.targetRoute || '/login';
+    return <Navigate to={targetRoute} replace />;
+  }
+
   return <>{children}</>;
 };

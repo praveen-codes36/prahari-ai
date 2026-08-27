@@ -35,7 +35,7 @@ export const ReportDefectFlow: React.FC = () => {
     progress: 0,
     message: 'Initializing neural model...',
   });
-  const [aiAnalysis, setAiAnalysis] = useState<AIDefectAnalysis | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<(AIDefectAnalysis & { reportId?: string }) | null>(null);
   const [address, setAddress] = useState(preselectedRoad);
   const [landmark, setLandmark] = useState('Opposite Metro Pillar 142');
   const [userNotes, setUserNotes] = useState('');
@@ -66,15 +66,18 @@ export const ReportDefectFlow: React.FC = () => {
     },
   ];
 
-  const handleStartScan = async (imageSrc: string) => {
+  const handleStartScan = async (imageSrc: string, file?: File) => {
     setSelectedImage(imageSrc);
     setStep('scanning');
 
     try {
-      const result = await analyzeDefectImage(imageSrc, (stage) => {
+      const result = await analyzeDefectImage(file || imageSrc, (stage) => {
         setScanProgress(stage);
       });
       setAiAnalysis(result);
+      if (result.reportId) {
+        setGeneratedReportId(result.reportId);
+      }
       setStep('analysis');
     } catch (err) {
       console.error('AI Scan error:', err);
@@ -87,7 +90,7 @@ export const ReportDefectFlow: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          handleStartScan(event.target.result as string);
+          handleStartScan(event.target.result as string, file);
         }
       };
       reader.readAsDataURL(file);
@@ -95,8 +98,7 @@ export const ReportDefectFlow: React.FC = () => {
   };
 
   const handleFinalSubmit = () => {
-    const newId = `PR-${Math.floor(1000 + Math.random() * 9000)}-${aiAnalysis?.defectType?.charAt(0).toUpperCase() || 'R'}`;
-    setGeneratedReportId(newId);
+    // The report is already created in DB during the scan step in this architecture
     setStep('success');
   };
 

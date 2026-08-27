@@ -9,9 +9,9 @@ export interface ScanStage {
 }
 
 export const analyzeDefectImage = async (
-  _imageFileOrUrl: string,
+  imageFileOrUrl: File | string,
   onProgress?: (stage: ScanStage) => void
-): Promise<AIDefectAnalysis> => {
+): Promise<AIDefectAnalysis & { reportId: string }> => {
   const steps: ScanStage[] = [
     { stage: 'INGEST', progress: 15, message: 'CV-Vision online: Ingesting image buffer & telemetry...', detail: 'Latching EXIF location coordinates: 19.1136° N, 72.8697° E' },
     { stage: 'PREPROCESS', progress: 35, message: 'Normalizing photometric exposure and texture contrast...', detail: 'High-contrast edge kernel applied across road asphalt plane' },
@@ -23,12 +23,23 @@ export const analyzeDefectImage = async (
 
   // Start actual API call
   try {
-    const res = await apiClient.post('/complaints', {
-      photo_url: _imageFileOrUrl || 'dummy_url',
-      location: {
-        type: 'Point',
-        coordinates: [81.8463, 25.4358], // Mock GPS location
-      },
+    let fileBlob: Blob | File;
+    if (typeof imageFileOrUrl === 'string') {
+        const fetchRes = await fetch(imageFileOrUrl);
+        fileBlob = await fetchRes.blob();
+    } else {
+        fileBlob = imageFileOrUrl;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', fileBlob, 'defect_image.jpg');
+    formData.append('longitude', '72.8777'); // Mock GPS location
+    formData.append('latitude', '19.0760'); // Mock GPS location
+
+    const res = await apiClient.post('/complaints', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
 
     const data = res.data.data; // The returned complaint object
@@ -41,23 +52,24 @@ export const analyzeDefectImage = async (
     }
 
     return {
+      reportId: data._id ? data._id.slice(-6).toUpperCase() : 'UNKNOWN',
       defectType: data.defect_type ? data.defect_type.toLowerCase() : 'pothole',
-      defectName: data.defect_type ? `${data.defect_type} Detected` : 'Structural Pothole >15cm depth',
+      defectName: data.defect_type ? `${data.defect_type} Detected` : 'Structural Defect',
       confidence: data.confidence_score || 94,
       severity: data.severity ? data.severity.toLowerCase() : 'critical',
-      estimatedDepth: '>16.8 cm',
-      estimatedDimensions: '1.4m × 0.9m',
+      estimatedDepth: '>15 cm',
+      estimatedDimensions: 'Varies',
       riskScore: 92,
-      departmentRouting: data.assigned_department_id || 'PWD-ROAD',
+      departmentRouting: data.assigned_department_id?.name || 'PWD-ROAD',
       priorityLevel: 'P1',
       potentialDuplicate: data.is_duplicate ? {
-        reportId: data.duplicate_of || 'RD-8842',
+        reportId: data.duplicate_of ? data.duplicate_of.slice(-6).toUpperCase() : 'UNKNOWN',
         distanceMeters: 40,
         matchConfidence: data.duplicate_similarity_score || 88,
       } : undefined,
       reasoning: {
         edgeDetection: 'High-contrast boundary identified indicating structural rupture of top asphalt layer.',
-        depthEstimation: 'Shadow gradient analysis confirms depth exceeds 15cm threshold.',
+        depthEstimation: 'Shadow gradient analysis confirms depth exceeds threshold.',
         trafficCorrelation: 'High-density urban commuter artery with heavy transit volume.',
         pedestrianRisk: 'Severe skid hazard for two-wheelers and pedestrians in wet monsoon conditions.',
       },

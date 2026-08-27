@@ -138,55 +138,57 @@ export const authService = {
     rememberMe = true
   ): Promise<AuthSession> {
     try {
-      // In a real system, the role is typically inferred from the credentials
-      // and not explicitly selected, but we will pass it just in case backend needs it
-      const response = await apiClient.post('/auth/login', {
-        email: emailOrEmployeeId,
-        password: password || 'password123',
-      });
-      
-      const { user, token } = response.data;
-      
-      const authUser: AuthUser = {
-        ...user,
-        role: user.role.toLowerCase() as UserRole,
-        lastLoginAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        // Map database fields to UI fields if needed
-        employeeId: user.employeeId || 'ID-001',
-        department: user.department || 'Gov',
-        clearanceLevel: 'LEVEL',
-        badgeNumber: 'BDG-001'
-      };
-
-      const session: AuthSession = {
-        user: authUser,
-        token,
-        expiresAt: rememberMe ? Date.now() + 7 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000,
-        isAuthenticated: true,
-      };
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      return session;
-    } catch (error) {
+      return await this._executeLogin(emailOrEmployeeId, password, selectedRole, rememberMe);
+    } catch (error: any) {
+      // Auto-register demo users if they don't exist in the database
+      if (error.response?.status === 400 && Object.values(MOCK_USERS).some(u => u.email === emailOrEmployeeId)) {
+        const mockUser = Object.values(MOCK_USERS).find(u => u.email === emailOrEmployeeId);
+        if (mockUser) {
+           await apiClient.post('/auth/register', {
+             name: mockUser.name,
+             email: mockUser.email,
+             password: password || 'password123',
+             role: mockUser.role.toUpperCase()
+           });
+           // Retry login
+           return await this._executeLogin(emailOrEmployeeId, password, selectedRole, rememberMe);
+        }
+      }
       console.error('Login failed:', error);
       throw error;
     }
   },
 
-  // Switch role seamlessly
-  switchRole(newRole: UserRole): AuthSession {
-    const user = MOCK_USERS[newRole];
+  async _executeLogin(emailOrEmployeeId: string, password?: string, selectedRole: UserRole = 'authority', rememberMe = true) {
+    const response = await apiClient.post('/auth/login', {
+      email: emailOrEmployeeId,
+      password: password || 'password123',
+    });
+    
+    const { user, token } = response.data;
+    
+    const authUser: AuthUser = {
+      ...user,
+      role: user.role.toLowerCase() as UserRole,
+      lastLoginAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      employeeId: user.employeeId || 'ID-001',
+      department: user.department || 'Gov',
+      clearanceLevel: 'LEVEL',
+      badgeNumber: 'BDG-001'
+    };
+
     const session: AuthSession = {
-      user,
-      token: `prahari_jwt_${btoa(user.id)}_${Date.now()}`,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      user: authUser,
+      token,
+      expiresAt: rememberMe ? Date.now() + 7 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000,
       isAuthenticated: true,
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    } catch {}
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     return session;
   },
+
+
 
   // Logout and clear storage
   logout(): void {
