@@ -2,6 +2,7 @@ import { Router } from "express";
 import { calculateHealthScore } from "../controllers/road_health.controller.js";
 import { predictRisk } from "../controllers/risk.controller.js";
 import { predictMaintenance } from "../controllers/maintenance.controller.js";
+import { triggerRecalculation } from "../controllers/orchestration.controller.js";
 
 const router = Router();
 
@@ -13,6 +14,9 @@ router.route("/predict-risk").post(predictRisk);
 
 // Route: /api/internal/predict-maintenance
 router.route("/predict-maintenance").post(predictMaintenance);
+
+// Route: /api/internal/trigger-recalculation (Feature 10: Closed-Loop System)
+router.route("/trigger-recalculation").post(triggerRecalculation);
 
 import { detectDefectInternal, checkDuplicateInternal } from "../controllers/complaints.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
