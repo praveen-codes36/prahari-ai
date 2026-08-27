@@ -10,10 +10,9 @@ export const getPriorityQueue = async (req, res) => {
         // Fetch all priorities, sorted by priority_score descending (highest first)
         const priorityQueue = await RepairPriority.find()
             .sort({ priority_score: -1 })
-            // If the Complaint model existed, we would populate it here to show full details
-            // .populate("complaint_id") 
-            // .populate("road_segment_id");
-        
+            .populate("complaint_id") 
+            .populate("road_segment_id");
+
         return res.status(200).json(new ApiResponse(200, priorityQueue, "Priority queue fetched successfully"));
     } catch (error) {
         return res.status(error.statusCode || 500).json(

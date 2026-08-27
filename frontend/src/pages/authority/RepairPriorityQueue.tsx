@@ -21,23 +21,103 @@ import { AIConfidenceRing } from '../../components/common/AIConfidenceRing';
 import { SeverityBadge } from '../../components/common/Badges';
 import { MOCK_PRIORITY_QUEUE } from '../../data/mockData';
 import { PriorityQueueItem } from '../../types';
+import apiClient from '../../services/apiClient';
+import { reverseGeocode } from '../../utils/location';
 
 export const RepairPriorityQueue: React.FC = () => {
   const navigate = useNavigate();
-  const [queueItems, setQueueItems] = useState<PriorityQueueItem[]>(MOCK_PRIORITY_QUEUE);
-  const [selectedItem, setSelectedItem] = useState<PriorityQueueItem>(MOCK_PRIORITY_QUEUE[0]);
+  const [queueItems, setQueueItems] = useState<PriorityQueueItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<PriorityQueueItem | null>(null);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deploySuccess, setDeploySuccess] = useState(false);
   const [selectedCrew, setSelectedCrew] = useState('Quick Response Unit 01 (8 technicians + 1 paver)');
   const [allocatedAsphalt, setAllocatedAsphalt] = useState('5.0 Metric Tons (Polymer Cold-Mix)');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleDeployCrew = () => {
-    setDeploySuccess(true);
-    setTimeout(() => {
-      setDeploySuccess(false);
-      setShowDeployModal(false);
-    }, 1800);
+  React.useEffect(() => {
+    const fetchQueue = async () => {
+      try {
+        const response = await apiClient.get('/priority/queue');
+        if (response.data.success && response.data.data) {
+          // Map backend data to frontend PriorityQueueItem structure
+          const formatted = await Promise.all(response.data.data.map(async (item: any, index: number) => {
+            let address = item.complaint_id?.location?.address || 'Unknown Location';
+            const coords = item.complaint_id?.location?.coordinates || item.road_segment_id?.start_coordinates?.coordinates;
+            
+            if (coords && coords.length === 2 && (!address || address === 'Unknown Location')) {
+              try {
+                // coords are usually [lng, lat] in GeoJSON
+                const geo = await reverseGeocode(coords[1], coords[0]);
+                address = geo.address || geo.city || address;
+              } catch (e) {
+                console.error("Geocoding failed for item", item._id);
+              }
+            }
+
+            return {
+              id: item.complaint_id?._id || item._id,
+              rank: index + 1,
+              roadName: item.road_segment_id?.road_name || item.complaint_id?.defect_type || 'Unknown Location',
+              district: address,
+              city: 'Prayagraj', // Could be extracted from geo.city
+              affectedLengthKm: 0.5,
+              severityLevel: item.factors?.severity?.toLowerCase() || 'high',
+              triageScore: Math.round(item.priority_score),
+              aiConfidence: 94,
+              anomaliesDetected: item.factors?.accident_history || 1,
+              anomalyDelta: '+12% risk',
+              accidentCountLast30Days: item.factors?.accident_history || 0,
+              trafficVolumeText: item.factors?.traffic || 'HIGH',
+              vehiclesPerDay: item.factors?.traffic === 'HIGH' ? 35000 : 15000,
+              imageUrl: item.complaint_id?.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
+              reasoning: {
+                severityIndex: { score: 92, text: `Severity: ${item.factors?.severity || 'HIGH'}` },
+                locationRisk: { score: item.factors?.location_risk || 80, text: `Location risk score: ${item.factors?.location_risk || 80}` },
+                accidentCorrelation: { score: 85, text: `${item.factors?.accident_history || 0} recent accidents recorded.` },
+                vulnerabilityIndex: { score: 70, text: 'High risk of waterlogging.' },
+              },
+              recommendedAction: 'Immediate Deployment Required',
+              allocatedDepartment: item.complaint_id?.assigned_department_id?.name || 'PWD',
+              estimatedRepairCost: '₹' + (item.priority_score * 1200 + 15000).toLocaleString('en-IN'),
+              requiredCrew: 'Heavy Paver Squad',
+            };
+          }));
+          setQueueItems(formatted);
+          if (formatted.length > 0) setSelectedItem(formatted[0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch priority queue:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchQueue();
+  }, []);
+
+  const handleDeployCrew = async () => {
+    if (!selectedItem) return;
+    try {
+      await apiClient.patch(`/complaints/${selectedItem.id}/status`, { status: "ASSIGNED" });
+      setDeploySuccess(true);
+      setTimeout(() => {
+        setDeploySuccess(false);
+        setShowDeployModal(false);
+        // Refresh the queue locally or re-fetch
+        setQueueItems(queueItems.filter(i => i.id !== selectedItem.id));
+        setSelectedItem(queueItems.find(i => i.id !== selectedItem.id) || null);
+      }, 1800);
+    } catch (e) {
+      console.error("Failed to assign crew", e);
+    }
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-96 text-[#00daf3]">Loading Priority Queue...</div>;
+  }
+
+  if (!selectedItem) {
+    return <div className="flex items-center justify-center h-96 text-white">No items in the Priority Queue.</div>;
+  }
 
   return (
     <div className="space-y-6 pb-20 pt-2">

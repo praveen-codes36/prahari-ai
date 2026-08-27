@@ -13,12 +13,49 @@ import {
 } from 'lucide-react';
 import { HealthScoreCircle } from '../../components/common/HealthScoreCircle';
 import { SeverityBadge } from '../../components/common/Badges';
-import { MOCK_ROAD_SEGMENTS } from '../../data/mockData';
+import { RoadSegment } from '../../types';
+import apiClient from '../../services/apiClient';
 
 export const RoadHealthAnalytics: React.FC = () => {
+  const [segments, setSegments] = useState<RoadSegment[]>([]);
   const [selectedCity, setSelectedCity] = useState<'All' | 'Mumbai' | 'Delhi' | 'Bengaluru'>('All');
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredSegments = MOCK_ROAD_SEGMENTS.filter((s) =>
+  React.useEffect(() => {
+    const fetchHealthScores = async () => {
+      try {
+        const response = await apiClient.get('/roads/health-scores');
+        if (response.data.success && response.data.data) {
+          const formatted = response.data.data.map((item: any) => ({
+            id: item._id,
+            name: item.road_name || 'Unknown Road',
+            district: 'Prayagraj', // Should map to DB later if stored
+            city: 'Prayagraj',
+            lengthKm: 1.2,
+            healthScore: item.health_score,
+            riskLevel: item.band === 'RED' ? 'critical' : item.band === 'YELLOW' ? 'medium' : 'low',
+            accidentHistoryCount: item.factors?.accident_history || 0,
+            lightingStatus: 'Adequate',
+            trafficVolume: 'High',
+            vehiclesPerDay: 15000,
+            activeAnomaliesCount: item.factors?.potholes || 0,
+            lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
+            coordinates: { lat: 25.4358, lng: 81.8463 },
+            potholeCount: item.factors?.potholes || 0,
+            floodRisk: 'Low'
+          }));
+          setSegments(formatted);
+        }
+      } catch (error) {
+        console.error('Failed to fetch road health:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchHealthScores();
+  }, []);
+
+  const filteredSegments = segments.filter((s) =>
     selectedCity === 'All' ? true : s.city === selectedCity
   );
 

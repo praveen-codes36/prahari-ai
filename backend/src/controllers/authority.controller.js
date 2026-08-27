@@ -132,6 +132,10 @@ export const getOverviewData = async (req, res) => {
 
         // Format Urgent Attention Feed for frontend
         const urgentFeed = rawPriorityFeed.map((item, index) => {
+            const confidence = Math.min(100, Math.max(70, Math.round(item.priority_score * 0.9 + (item.factors?.location_risk || 0) * 0.1)));
+            const baseCost = item.factors?.severity === 'CRITICAL' ? 50 : item.factors?.severity === 'HIGH' ? 30 : 10;
+            const extraCost = Math.round((item.factors?.location_risk || 0) * 0.2);
+            
             return {
                 id: item._id.toString(),
                 rank: index + 1,
@@ -140,8 +144,8 @@ export const getOverviewData = async (req, res) => {
                 reasoning: {
                     severityIndex: { text: `Severity: ${item.factors?.severity || 'HIGH'} | Risk: ${item.factors?.location_risk || 0}` }
                 },
-                estimatedRepairCost: '$' + (Math.floor(Math.random() * 50) + 10) + 'k', // Mocked cost if real data doesn't exist
-                aiConfidence: Math.floor(Math.random() * 20) + 80, // Mocked confidence
+                estimatedRepairCost: '$' + (baseCost + extraCost) + 'k', 
+                aiConfidence: confidence, 
                 p1Deadline: 'Immediate',
             };
         });

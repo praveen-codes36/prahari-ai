@@ -25,13 +25,58 @@ import {
   Info,
   X,
 } from 'lucide-react';
-import { MOCK_PREDICTIVE_ASSETS } from '../../data/mockData';
 import { PredictiveAsset } from '../../types';
+import apiClient from '../../services/apiClient';
 
 export const PredictiveMaintenancePage: React.FC = () => {
   const navigate = useNavigate();
-  const [assets] = useState<PredictiveAsset[]>(MOCK_PREDICTIVE_ASSETS);
-  const [selectedAssetId, setSelectedAssetId] = useState<string>(MOCK_PREDICTIVE_ASSETS[0].id);
+  const [assets, setAssets] = useState<PredictiveAsset[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchPredictions = async () => {
+      try {
+        const response = await apiClient.get('/maintenance/predictions');
+        if (response.data.success && response.data.data) {
+          const formatted = response.data.data.map((item: any) => {
+            const currentRisk = item.current_risk_score || 50;
+            const pred30 = item.predicted_risk_score_30d || currentRisk + 10;
+            return {
+              id: item._id,
+              name: item.road_segment_id?.road_name || 'Unknown Asset',
+              assetType: 'Highway Segment',
+              location: 'Prayagraj', // Should map to reverse geo later
+              currentHealthPct: 100 - currentRisk,
+              health30d: 100 - pred30,
+              health60d: Math.max(5, 100 - pred30 - 15),
+              health90d: Math.max(5, 100 - pred30 - 30),
+              failureProbabilityPct: currentRisk,
+              recommendedInterventionDays: item.recommended_intervention_days || (30 - Math.round(currentRisk / 10)),
+              estimatedPreventiveCostInr: item.estimated_preventive_cost || 150000,
+              estimatedCatastrophicCostInr: item.estimated_catastrophic_cost || 2500000,
+              expectedDowntimeDays: 5,
+              publicImpactScore: 85,
+              aiPredictionSummary: item.reasoning?.join(' ') || 'Risk predicted based on historical complaint velocity and structural decay rates.',
+              stressFactors: [
+                { name: 'Axle Load Shear', level: 'HIGH', description: 'Heavy freight divergence.' },
+                { name: 'Monsoon Cavitation', level: 'MEDIUM', description: 'Subgrade washout.' }
+              ],
+              inspectionsCount: 4,
+              lastUltrasoundScan: new Date().toLocaleDateString()
+            };
+          });
+          setAssets(formatted);
+          if (formatted.length > 0) setSelectedAssetId(formatted[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch predictions', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPredictions();
+  }, []);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');

@@ -18,6 +18,10 @@ const accidentSchema = new Schema(
             coordinates: {
                 type: [Number], // Array of numbers: [longitude, latitude]
                 required: true
+            },
+            address: {
+                type: String,
+                default: ""
             }
         },
         severity: {

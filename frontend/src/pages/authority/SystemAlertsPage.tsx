@@ -13,13 +13,55 @@ import {
   Layers,
   ChevronRight,
 } from 'lucide-react';
-import { MOCK_SYSTEM_ALERTS } from '../../data/mockData';
 import { SystemAlert } from '../../types';
+import apiClient from '../../services/apiClient';
+import { reverseGeocode } from '../../utils/location';
 
 export const SystemAlertsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [alerts, setAlerts] = useState<SystemAlert[]>(MOCK_SYSTEM_ALERTS);
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'CRITICAL' | 'WARNING' | 'INFO' | 'RESOLVED'>('ALL');
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const response = await apiClient.get('/alerts/active');
+        if (response.data.success && response.data.data) {
+          const formatted = await Promise.all(response.data.data.map(async (item: any) => {
+            let addressStr = 'Prayagraj';
+            const coords = item.location?.coordinates;
+            if (coords && coords.length === 2) {
+              try {
+                const geo = await reverseGeocode(coords[1], coords[0]);
+                addressStr = geo.address || geo.city || addressStr;
+              } catch (e) {
+                console.error("Geocoding error", e);
+              }
+            }
+
+            return {
+              id: item._id,
+              type: item.type || 'CRITICAL',
+              title: item.type + ' Alert',
+              message: item.message || 'No description provided.',
+              location: addressStr,
+              timestamp: new Date(item.created_at || Date.now()).toISOString(),
+              isRead: false,
+              acknowledged: false,
+              actionUrl: '/authority/overview'
+            };
+          }));
+          setAlerts(formatted);
+        }
+      } catch (error) {
+        console.error('Failed to fetch alerts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAlerts();
+  }, []);
 
   const handleAcknowledge = (id: string) => {
     setAlerts((prev) =>

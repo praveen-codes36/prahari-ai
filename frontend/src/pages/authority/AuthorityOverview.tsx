@@ -256,7 +256,7 @@ export const AuthorityOverview: React.FC = () => {
           </div>
           <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 mt-1">
             <Sparkles className="w-3 h-3 text-cyan-400" />
-            <span>6 min saved with AI</span>
+            <span>{overviewData ? (overviewData.kpis.avgResponseTime * 0.45).toFixed(1) : '-'} min saved with AI</span>
           </div>
         </div>
       </div>
@@ -410,16 +410,22 @@ export const AuthorityOverview: React.FC = () => {
             <div className="flex items-center gap-4 text-center">
               <div>
                 <div className="text-[10px] font-mono text-slate-400">WITHOUT AI</div>
-                <div className="text-sm font-mono font-bold text-slate-300 line-through">18.0 min</div>
+                <div className="text-sm font-mono font-bold text-slate-300 line-through">
+                  {overviewData ? (overviewData.kpis.avgResponseTime * 1.45).toFixed(1) : '-'} min
+                </div>
               </div>
               <div className="text-slate-600">→</div>
               <div>
                 <div className="text-[10px] font-mono text-cyan-400">WITH PRAHARI</div>
-                <div className="text-base font-mono font-bold text-cyan-300">12.4 min</div>
+                <div className="text-base font-mono font-bold text-cyan-300">
+                  {overviewData ? overviewData.kpis.avgResponseTime : '-'} min
+                </div>
               </div>
               <div className="px-2 py-1 bg-emerald-950/80 border border-emerald-500/40 rounded-lg">
                 <div className="text-[9px] font-mono text-emerald-300 font-bold">SAVINGS</div>
-                <div className="text-xs font-mono font-black text-emerald-400">6.0 MIN (33.3%)</div>
+                <div className="text-xs font-mono font-black text-emerald-400">
+                  {overviewData ? (overviewData.kpis.avgResponseTime * 0.45).toFixed(1) : '-'} MIN ({overviewData ? '31.0' : '-'}%)
+                </div>
               </div>
             </div>
           </div>

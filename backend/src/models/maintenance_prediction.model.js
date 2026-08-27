@@ -15,6 +15,18 @@ const maintenancePredictionSchema = new Schema(
             type: Number,
             required: true,
         },
+        estimated_preventive_cost: {
+            type: Number,
+            default: 150000,
+        },
+        estimated_catastrophic_cost: {
+            type: Number,
+            default: 2500000,
+        },
+        recommended_intervention_days: {
+            type: Number,
+            default: 15,
+        },
         reasoning: {
             type: [String],
             required: true,

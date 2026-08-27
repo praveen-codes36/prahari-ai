@@ -11,6 +11,10 @@ const roadHealthScoreSchema = new Schema({
         required: true,
         trim: true
     },
+    coordinates: {
+        type: [Number], // [longitude, latitude]
+        index: '2dsphere'
+    },
     health_score: {
         type: Number,
         min: 0,

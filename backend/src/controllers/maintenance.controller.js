@@ -45,6 +45,7 @@ export const predictMaintenance = async (req, res) => {
     try {
         const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
         
+        const riskZones = await RiskZone.find({});
         for (let zone of riskZones) {
             const payload = {
                 road_segment_id: zone._id.toString(),

@@ -19,13 +19,82 @@ import { SeverityBadge, StatusBadge } from '../../components/common/Badges';
 import { AIConfidenceRing } from '../../components/common/AIConfidenceRing';
 import { MOCK_REPORTS } from '../../data/mockData';
 import { DefectReport, ReportStatus, SeverityLevel } from '../../types';
+import apiClient from '../../services/apiClient';
+import { reverseGeocode } from '../../utils/location';
 
 export const ComplaintsManagement: React.FC = () => {
-  const [reports, setReports] = useState<DefectReport[]>(MOCK_REPORTS);
+  const [reports, setReports] = useState<DefectReport[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | SeverityLevel>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ReportStatus>('all');
   const [selectedReport, setSelectedReport] = useState<DefectReport | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchComplaints = async () => {
+      try {
+        const response = await apiClient.get('/complaints');
+        if (response.data.success && response.data.data) {
+          const rawComplaints = response.data.data;
+          
+          // Map backend Complaint to frontend DefectReport
+          const formattedReports: DefectReport[] = rawComplaints.map((item: any) => ({
+            id: item._id,
+            title: item.defect_type,
+            defectType: item.defect_type.toLowerCase(),
+            severity: item.severity?.toLowerCase() || 'medium',
+            status: item.status?.toLowerCase() || 'submitted',
+            location: {
+              lat: item.location?.coordinates?.[1] || 0,
+              lng: item.location?.coordinates?.[0] || 0,
+              address: 'Loading address...', // Will be updated via reverse geocoding if needed
+              city: 'Unknown'
+            },
+            imageUrl: item.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
+            aiAnalysis: {
+              defectType: item.defect_type.toLowerCase(),
+              defectName: item.defect_type,
+              confidence: item.confidence_score || 85,
+              severity: item.severity?.toLowerCase() || 'medium',
+              riskScore: 70,
+              departmentRouting: item.assigned_department_id?.name || 'Unassigned',
+              priorityLevel: 'P2',
+              estimatedDepth: '> 10 cm',
+              estimatedDimensions: '1m x 1m'
+            },
+            reportedAt: item.createdAt || new Date().toISOString(),
+            updatedAt: item.updatedAt || new Date().toISOString(),
+            reportedBy: { name: 'Citizen', isAnonymous: true },
+            timeline: [],
+            commentsCount: 0,
+            upvotes: 0
+          }));
+          
+          setReports(formattedReports);
+          
+          // Enhance with reverse geocoding
+          formattedReports.forEach(async (report) => {
+            if (report.location.lat && report.location.lng) {
+               try {
+                 const addressInfo = await reverseGeocode(report.location.lat, report.location.lng);
+                 setReports(prev => prev.map(r => r.id === report.id ? {
+                   ...r, 
+                   location: { ...r.location, address: addressInfo.address, city: addressInfo.city }
+                 } : r));
+               } catch (e) {
+                 // ignore
+               }
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch complaints:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchComplaints();
+  }, []);
 
   const filteredReports = reports.filter((r) => {
     if (severityFilter !== 'all' && r.severity !== severityFilter) return false;
@@ -41,12 +110,20 @@ export const ComplaintsManagement: React.FC = () => {
     return true;
   });
 
-  const handleStatusUpdate = (reportId: string, newStatus: ReportStatus) => {
-    setReports((prev) =>
-      prev.map((r) => (r.id === reportId ? { ...r, status: newStatus } : r))
-    );
-    if (selectedReport && selectedReport.id === reportId) {
-      setSelectedReport({ ...selectedReport, status: newStatus });
+  const handleStatusUpdate = async (reportId: string, newStatus: ReportStatus) => {
+    try {
+      const response = await apiClient.patch(`/complaints/${reportId}/status`, { status: newStatus.toUpperCase() });
+      if (response.data.success) {
+        setReports((prev) =>
+          prev.map((r) => (r.id === reportId ? { ...r, status: newStatus } : r))
+        );
+        if (selectedReport && selectedReport.id === reportId) {
+          setSelectedReport({ ...selectedReport, status: newStatus });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update status. Please check backend connection.');
     }
   };
 

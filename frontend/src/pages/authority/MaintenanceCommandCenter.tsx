@@ -18,17 +18,70 @@ import {
   X,
   Camera,
 } from 'lucide-react';
-import { MOCK_WORK_ORDERS, MOCK_FIELD_TEAMS } from '../../data/mockData';
+import { MOCK_FIELD_TEAMS } from '../../data/mockData';
 import { MaintenanceWorkOrder } from '../../types';
+import apiClient from '../../services/apiClient';
+import { reverseGeocode } from '../../utils/location';
 
 export const MaintenanceCommandCenter: React.FC = () => {
   const navigate = useNavigate();
-  const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>(MOCK_WORK_ORDERS);
+  const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL');
   const [assignModalOrder, setAssignModalOrder] = useState<MaintenanceWorkOrder | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>('TEAM-ALPHA');
   const [assignSuccess, setAssignSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  React.useEffect(() => {
+    const fetchWorkOrders = async () => {
+      try {
+        const response = await apiClient.get('/complaints');
+        if (response.data.success && response.data.data) {
+          const formatted: MaintenanceWorkOrder[] = await Promise.all(response.data.data.map(async (item: any) => {
+            const risk = item.confidence_score || 50;
+            const priority = risk > 80 ? 'P1' : risk > 60 ? 'P2' : 'P3';
+            
+            let address = item.location?.address || 'Unknown Location';
+            const coords = item.location?.coordinates;
+            
+            if (coords && coords.length === 2 && (!address || address === 'Unknown Location' || address === '')) {
+              try {
+                const geo = await reverseGeocode(coords[1], coords[0]);
+                address = geo.address || geo.city || address;
+              } catch (e) {
+                console.error("Geocoding failed for work order", item._id);
+              }
+            }
+
+            return {
+              id: item._id,
+              reportId: item._id,
+              roadName: item.defect_type,
+              location: address,
+              defectType: item.defect_type.toLowerCase(),
+              department: item.assigned_department_id?.name || 'Unassigned',
+              priority,
+              riskScore: risk,
+              status: item.status === 'RESOLVED' ? 'Completed' : 'Assigned',
+              crewName: 'Pending Assignment',
+              assignedVehicle: 'N/A',
+              scheduledTime: 'ASAP',
+              estimatedCompletion: '4 hrs',
+              materialsNeeded: 'Standard Repair Kit',
+              estimatedCostInr: Math.floor(Math.random() * 50000) + 10000,
+              beforePhotoUrl: item.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
+            };
+          }));
+          setWorkOrders(formatted);
+        }
+      } catch (error) {
+        console.error('Failed to fetch work orders:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchWorkOrders();
+  }, []);
   const filteredOrders = workOrders.filter((order) => {
     if (selectedFilter === 'ALL') return true;
     return order.priority === selectedFilter;

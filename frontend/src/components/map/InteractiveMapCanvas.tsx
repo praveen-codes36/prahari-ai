@@ -110,14 +110,16 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
               activeAnomaliesCount: item.factors?.potholes || 0,
               lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
               coordinates: {
-                lat: item.coordinates ? item.coordinates[1] : (19.0760 + (Math.random() - 0.5) * 0.1), 
-                lng: item.coordinates ? item.coordinates[0] : (72.8777 + (Math.random() - 0.5) * 0.1)
+                lat: item.coordinates ? item.coordinates[1] : 25.4358, 
+                lng: item.coordinates ? item.coordinates[0] : 81.8463
               }
             }));
             setSegments(mapped);
             if (!selectedSegment || !mapped.find(m => m.id === selectedSegment?.id)) {
                setSelectedSegment(mapped[0]);
             }
+          } else {
+            setSegments(MOCK_ROAD_SEGMENTS);
           }
         } else {
           // Citizen Mode: Fetch from map layers (defects/hotspots) instead of authority health scores
@@ -139,8 +141,8 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
               activeAnomaliesCount: 1,
               lastScanned: 'Recent',
               coordinates: {
-                lat: item.location?.coordinates ? item.location.coordinates[1] : (19.0760 + (Math.random() - 0.5) * 0.1), 
-                lng: item.location?.coordinates ? item.location.coordinates[0] : (72.8777 + (Math.random() - 0.5) * 0.1)
+                lat: item.coordinates ? item.coordinates[1] : (item.location?.coordinates ? item.location.coordinates[1] : 25.4358), 
+                lng: item.coordinates ? item.coordinates[0] : (item.location?.coordinates ? item.location.coordinates[0] : 81.8463)
               }
             }));
             setSegments(mapped);

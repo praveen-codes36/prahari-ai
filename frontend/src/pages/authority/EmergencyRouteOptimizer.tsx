@@ -15,13 +15,12 @@ import {
   Hospital,
 } from 'lucide-react';
 import { RouteOptimizationMap } from '../../components/map/RouteOptimizationMap';
-import { MOCK_EMERGENCY_ROUTES } from '../../data/mockData';
 import { EmergencyRouteOption } from '../../types';
-import { dispatchEmergencyRoute } from '../../services/routeOptimizationService';
+import apiClient from '../../services/apiClient';
 
 export const EmergencyRouteOptimizer: React.FC = () => {
-  const [routes, setRoutes] = useState<EmergencyRouteOption[]>(MOCK_EMERGENCY_ROUTES);
-  const [selectedRouteId, setSelectedRouteId] = useState<'A' | 'B' | 'C'>('B');
+  const [routes, setRoutes] = useState<EmergencyRouteOption[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<'A' | 'B' | 'C'>('A');
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [dispatchStatus, setDispatchStatus] = useState<{
     isDispatched: boolean;
@@ -29,21 +28,55 @@ export const EmergencyRouteOptimizer: React.FC = () => {
     signalsPreempted?: number;
   }>({ isDispatched: false });
 
-  const activeRoute = routes.find((r) => r.id === selectedRouteId) || routes[1];
+  const fetchRoutes = async () => {
+    setIsRecalculating(true);
+    try {
+      // Pass coordinates for Prayagraj center for demo purposes
+      const response = await apiClient.post('/emergency/route', {
+        longitude: 81.8463, 
+        latitude: 25.4358
+      });
+      if (response.data.success && response.data.data) {
+        const { route } = response.data.data;
+        const formattedRoutes: EmergencyRouteOption[] = [
+          {
+            id: 'A',
+            name: 'Fastest AI Route',
+            isRecommended: true,
+            riskLevel: 'low',
+            distanceKm: route.fastest_route_coords?.length ? (route.fastest_route_coords.length * 0.1).toFixed(1) as any : 4.5,
+            estimatedEtaMin: route.fastest_route_eta_mins || 12,
+            trafficStatus: 'Clear',
+            bottlenecks: [],
+            advantages: ['Fastest time', 'Low risk'],
+            aiAssessment: 'Optimal path minimizing risk and travel time.',
+            signalPreemptionNodes: 4
+          }
+        ];
+        setRoutes(formattedRoutes);
+        setSelectedRouteId('A');
+      }
+    } catch (error) {
+      console.error('Failed to calculate routes:', error);
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchRoutes();
+  }, []);
 
   const handleRecalculate = () => {
-    setIsRecalculating(true);
-    setTimeout(() => {
-      setIsRecalculating(false);
-    }, 600);
+    fetchRoutes();
   };
 
   const handleDispatch = async () => {
-    const res = await dispatchEmergencyRoute(selectedRouteId);
+    // In a real scenario, this would POST to a dispatch endpoint
     setDispatchStatus({
       isDispatched: true,
-      dispatchId: res.dispatchId,
-      signalsPreempted: res.signalsPreempted,
+      dispatchId: `DISP-${Math.floor(Math.random() * 10000)}`,
+      signalsPreempted: 4,
     });
   };
 

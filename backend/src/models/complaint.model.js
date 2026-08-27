@@ -29,6 +29,10 @@ const complaintSchema = new mongoose.Schema(
         type: [Number], // [longitude, latitude] 
         required: true,
       },
+      address: {
+        type: String,
+        default: "",
+      },
     },
     status: {
       type: String,
