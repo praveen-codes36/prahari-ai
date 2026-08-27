@@ -6,11 +6,11 @@ import { Department } from "../models/Department.model.js";
 import { triggerRecalculation } from "./orchestration.controller.js";
 
 const MAP_DEFECT_TO_DEPARTMENT = {
-  POTHOLE: "Road Department",
-  BROKEN_STREETLIGHT: "Electrical Department",
-  GARBAGE: "Sanitation Department",
-  DRAINAGE: "Public Works Department",
-  OTHER: "General Civic Department"
+  POTHOLE: "Road",
+  BROKEN_STREETLIGHT: "Electrical",
+  GARBAGE: "Sanitation",
+  DRAINAGE: "Public Works",
+  OTHER: "Public Works"
 };
 
 const MAP_ML_LABEL_TO_ENUM = {
@@ -82,8 +82,16 @@ export const createComplaint = async (req, res) => {
     const severity = mlResult.severity || "MEDIUM";
     const confidence_score = mlResult.confidence_score || 50;
 
-    const deptName = MAP_DEFECT_TO_DEPARTMENT[defect_type] || "General Civic Department";
-    const department = await Department.findOne({ name: deptName });
+    const deptName = MAP_DEFECT_TO_DEPARTMENT[defect_type] || "Public Works";
+    let department = await Department.findOne({ name: deptName });
+
+    // Auto-create department if it doesn't exist in the database yet
+    if (!department) {
+        department = await Department.create({ 
+            name: deptName, 
+            contact_email: `${deptName.toLowerCase().replace(/ /g, '')}@prahari.gov.in` 
+        });
+    }
 
     const existingDuplicate = await checkDuplicateHelper(parseFloat(longitude), parseFloat(latitude), defect_type);
 

@@ -1,24 +1,48 @@
 import { RiskZone } from "../models/risk_zone.model.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
+import axios from "axios";
 
 // @desc    Trigger accident risk model to recalculate risk_score for segments
 // @route   POST /api/internal/predict-risk
 export const predictRisk = async (req, res) => {
     try {
-        // In a real scenario, this would call a Python ML microservice to compute the score.
-        // For now, we simulate a simple update.
         const riskZones = await RiskZone.find({});
-        
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+
         for (let zone of riskZones) {
-            // Mocking a risk calculation
-            zone.risk_score = Math.floor(Math.random() * 100);
-            if (zone.risk_score < 33) zone.risk_level = "LOW";
-            else if (zone.risk_score < 66) zone.risk_level = "MEDIUM";
-            else zone.risk_level = "HIGH";
-            
-            zone.last_calculated_at = Date.now();
-            await zone.save();
+            // Get coordinates (if Polygon get first point, if LineString get middle)
+            const coords = zone.geometry.coordinates;
+            let lng = 81.8463, lat = 25.4358; // Defaults
+            if (coords && coords.length > 0) {
+                if (zone.geometry.type === "Point") {
+                    [lng, lat] = coords;
+                } else if (zone.geometry.type === "LineString") {
+                    [lng, lat] = coords[Math.floor(coords.length / 2)];
+                } else if (zone.geometry.type === "Polygon") {
+                    [lng, lat] = coords[0][0];
+                }
+            }
+
+            const payload = {
+                lat,
+                lng,
+                nearby_defect_count: zone.factors.potholes + zone.factors.streetlights + zone.factors.citizen_complaints
+            };
+
+            try {
+                const mlRes = await axios.post(`${ML_SERVICE_URL}/predict_risk`, payload);
+                const data = mlRes.data;
+
+                if (data && data.risk_score !== undefined) {
+                    zone.risk_score = data.risk_score_100 || data.risk_score;
+                    zone.risk_level = data.risk_level;
+                    zone.last_calculated_at = Date.now();
+                    await zone.save();
+                }
+            } catch (err) {
+                console.error(`Failed to update risk for segment ${zone._id}:`, err.message);
+            }
         }
 
         return res.status(200).json(new ApiResponse(200, null, "Risk scores recalculated for all segments"));
