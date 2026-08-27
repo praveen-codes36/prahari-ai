@@ -46,6 +46,7 @@ const complaintSchema = new mongoose.Schema(
       default: null,
     },
     duplicate_similarity_score: { type: Number, default: null },
+    resolved_at: { type: Date, default: null },
   },
   { timestamps: true }
 );

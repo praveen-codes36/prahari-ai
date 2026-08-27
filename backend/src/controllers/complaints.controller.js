@@ -3,6 +3,7 @@ import FormData from "form-data";
 import fs from "fs";
 import { Complaint } from "../models/complaint.model.js";
 import { Department } from "../models/Department.model.js";
+import { triggerRecalculation } from "./orchestration.controller.js";
 
 const MAP_DEFECT_TO_DEPARTMENT = {
   POTHOLE: "Road Department",
@@ -40,6 +41,26 @@ export const checkDuplicateHelper = async (longitude, latitude, defectType, maxD
 // CORE ENDPOINTS
 // ==========================================
 
+const triggerClosedLoop = (complaint, eventType) => {
+    try {
+        const mockReq = {
+            body: {
+                event_type: eventType,
+                complaint_id: complaint._id,
+                coordinates: complaint.location?.coordinates,
+                factors: { severity: complaint.severity }
+            }
+        };
+        const mockRes = { status: () => ({ json: () => {} }) };
+        
+        // Fire-and-forget orchestrator hook
+        triggerRecalculation(mockReq, mockRes).catch(err => console.error("Closed loop async error:", err));
+    } catch (err) {
+        console.error("Failed to trigger closed loop", err);
+    }
+};
+
+
 // POST /api/complaints
 export const createComplaint = async (req, res) => {
   try {
@@ -69,6 +90,9 @@ export const createComplaint = async (req, res) => {
       duplicate_of: existingDuplicate ? existingDuplicate._id : null,
       duplicate_similarity_score: existingDuplicate ? 90 : null,
     });
+
+    // Feature 10: Closed-Loop System Trigger
+    triggerClosedLoop(newComplaint, "complaint_created");
 
     return res.status(201).json({ success: true, data: newComplaint });
   } catch (error) {
@@ -136,6 +160,12 @@ export const updateComplaintStatus = async (req, res) => {
       { status, resolved_at: status === "RESOLVED" ? new Date() : undefined }, 
       { new: true }
     );
+    
+    // Feature 10: Closed-Loop System Trigger (Recalculate risks on status change)
+    if (complaint) {
+        triggerClosedLoop(complaint, `complaint_status_changed_to_${status}`);
+    }
+
     res.status(200).json({ success: true, data: complaint });
   } catch (error) {
     res.status(500).json({ message: "Error updating status." });
