@@ -3,8 +3,16 @@ from fastapi.responses import JSONResponse
 import uvicorn
 from predict import detect_defect, predict_risk
 from src.routing_integration import EmergencyRoutingEngine
+from src.predictive_maintenance import PredictiveMaintenanceForecaster
+from src.road_health import RoadHealthScoreModel
+from src.repair_priority import RepairPriorityRankingModel
+from src.copilot_engine import AuthorityCopilotEngine
 
 engine = EmergencyRoutingEngine()
+pm_engine = PredictiveMaintenanceForecaster()
+rh_engine = RoadHealthScoreModel()
+rp_engine = RepairPriorityRankingModel()
+copilot = AuthorityCopilotEngine()
 app = FastAPI(
     title="Prahari AI ML Server",
     description="FastAPI server for RoadGuard/Prahari AI Machine Learning Models",
@@ -86,6 +94,69 @@ async def get_emergency_route(payload: dict = Body(...)):
         }
         
         return JSONResponse(content=formatted_result)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/predict_maintenance")
+async def predict_maintenance_api(payload: dict = Body(...)):
+    try:
+        res = pm_engine.predict_maintenance(
+            road_segment_id=payload.get("road_segment_id", "UNKNOWN"),
+            current_risk_score=payload.get("current_risk_score", 50.0),
+            recent_complaint_velocity=payload.get("recent_complaint_velocity", 1.0),
+            recent_traffic_trend=payload.get("recent_traffic_trend", 1.0),
+            time_since_last_repair_days=payload.get("time_since_last_repair_days", 90),
+            is_monsoon_season=payload.get("is_monsoon_season", False),
+            road_type=payload.get("road_type", "Major Arterial")
+        )
+        return JSONResponse(content=res)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/calculate_health")
+async def calculate_health_api(payload: dict = Body(...)):
+    try:
+        res = rh_engine.calculate_health_score(
+            road_segment_id=payload.get("road_segment_id", "UNKNOWN"),
+            accident_history_count=payload.get("accident_history_count", 0),
+            active_potholes=payload.get("active_potholes", 0),
+            active_streetlight_defects=payload.get("active_streetlight_defects", 0),
+            active_garbage_defects=payload.get("active_garbage_defects", 0),
+            active_drainage_defects=payload.get("active_drainage_defects", 0),
+            traffic_volume_daily=payload.get("traffic_volume_daily", 15000),
+            lighting_coverage_pct=payload.get("lighting_coverage_pct", 85.0),
+            drainage_functional=payload.get("drainage_functional", True),
+            surface_quality_index=payload.get("surface_quality_index", 8.0)
+        )
+        return JSONResponse(content=res)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/calculate_priority")
+async def calculate_priority_api(payload: dict = Body(...)):
+    try:
+        res = rp_engine.calculate_priority(
+            complaint_id=payload.get("complaint_id", "UNKNOWN"),
+            defect_type=payload.get("defect_type", "Pothole"),
+            severity=payload.get("severity", "HIGH"),
+            road_segment_risk_score=payload.get("road_segment_risk_score", 0.50),
+            accident_history_count=payload.get("accident_history_count", 0),
+            traffic_volume_daily=payload.get("traffic_volume_daily", 20000),
+            population_density=payload.get("population_density", "High"),
+            days_open=payload.get("days_open", 3)
+        )
+        return JSONResponse(content=res)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/copilot/query")
+async def copilot_query_api(payload: dict = Body(...)):
+    try:
+        res = copilot.query(
+            user_query=payload.get("query", ""),
+            retrieved_data=payload.get("retrieved_data", None)
+        )
+        return JSONResponse(content=res)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

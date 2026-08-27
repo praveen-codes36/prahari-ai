@@ -3,6 +3,7 @@ import { Accident } from "../models/accident.model.js";
 import { RoadBlockage } from "../models/road_blockage.model.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
+import axios from "axios";
 
 // How much each factor drags the health score down. Sum of weights = 1.
 const WEIGHTS = {
@@ -109,22 +110,24 @@ export const calculateHealthScore = async (req, res) => {
         //   drainage   <- Complaint.countDocuments({ defect_type: "DRAINAGE", ... })
         //   complaints <- total open Complaint count near this segment
         //   traffic    <- Person 3's HistoricalData / live traffic feed
-        const factors = {
-            accident_history,
-            potholes: overrides.potholes ?? 0,
-            traffic: overrides.traffic ?? 0,
-            lighting: overrides.lighting ?? 0,
-            drainage: overrides.drainage ?? 0,
-            complaints: overrides.complaints ?? 0,
-            road_condition
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+        const payload = {
+            road_segment_id: road_segment_id || road_name,
+            accident_history_count: nearbyAccidents.length,
+            active_potholes: overrides.potholes ?? 0,
+            active_streetlight_defects: overrides.lighting ?? 0,
+            active_garbage_defects: overrides.complaints ?? 0,
+            active_drainage_defects: overrides.drainage ?? 0,
+            traffic_volume_daily: 15000,
+            lighting_coverage_pct: 85.0,
+            drainage_functional: true,
+            surface_quality_index: road_condition > 50 ? 5.0 : 8.0
         };
 
-        // Each factor is a 0-100 "badness" score; health_score is the inverse of their weighted sum.
-        const badness = Object.entries(WEIGHTS).reduce(
-            (sum, [key, weight]) => sum + (factors[key] || 0) * weight,
-            0
-        );
-        const health_score = Math.max(0, Math.round(100 - badness));
+        const mlRes = await axios.post(`${ML_SERVICE_URL}/calculate_health`, payload);
+        const data = mlRes.data;
+        const health_score = data.health_score;
+        const factors = data.factors_breakdown;
 
         const updated = await RoadHealthScore.findOneAndUpdate(
             road_segment_id ? { road_segment_id } : { road_name },

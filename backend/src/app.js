@@ -13,6 +13,7 @@ import chatbotRouter from "./routes/chatbot.route.js"
 import internalRouter from "./routes/internal.route.js"
 import complaintsRouter from "./routes/complaints.routes.js";
 import departmentsRouter from "./routes/departments.route.js";
+import copilotRouter from "./routes/copilot.route.js";
 const app = express()
 
 // basic configurations
@@ -61,5 +62,6 @@ app.use("/api/simulation", simulationRouter)
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)
 app.use("/api/maintenance", maintenanceRouter)
+app.use("/api/copilot", copilotRouter)
 
 export default app

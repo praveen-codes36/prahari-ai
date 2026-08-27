@@ -2,6 +2,7 @@ import { MaintenancePrediction } from "../models/maintenance_prediction.model.js
 import { RiskZone } from "../models/risk_zone.model.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
+import axios from "axios";
 
 // @desc    List all road segments with a predicted 30-day risk increase, sorted by delta
 // @route   GET /api/maintenance/predictions
@@ -42,24 +43,28 @@ export const getPredictionBySegmentId = async (req, res) => {
 // @route   POST /api/internal/predict-maintenance
 export const predictMaintenance = async (req, res) => {
     try {
-        // In a real scenario, this would call the Python ML microservice (Model 5).
-        // For now, we simulate a simple update.
-        const riskZones = await RiskZone.find({});
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
         
         for (let zone of riskZones) {
-            // Mocking a predictive maintenance calculation
-            const current_risk = zone.risk_score || 50;
-            const predicted_risk = Math.min(100, current_risk + Math.floor(Math.random() * 20)); // simulated increase
+            const payload = {
+                road_segment_id: zone._id.toString(),
+                current_risk_score: zone.risk_score || 50,
+                recent_complaint_velocity: zone.factors ? zone.factors.citizen_complaints || 1.0 : 1.0,
+                recent_traffic_trend: 1.0,
+                time_since_last_repair_days: 90,
+                is_monsoon_season: false,
+                road_type: "Major Arterial"
+            };
 
-            const reasons = ["increasing complaints", "poor road condition"];
-            if (predicted_risk > 80) reasons.push("heavy traffic", "previous accidents");
+            const mlRes = await axios.post(`${ML_SERVICE_URL}/predict_maintenance`, payload);
+            const data = mlRes.data;
 
             await MaintenancePrediction.findOneAndUpdate(
                 { road_segment_id: zone._id },
                 {
-                    current_risk_score: current_risk,
-                    predicted_risk_score_30d: predicted_risk,
-                    reasoning: reasons,
+                    current_risk_score: data.current_risk_score,
+                    predicted_risk_score_30d: data.predicted_risk_score_30d,
+                    reasoning: data.reasoning,
                     predicted_at: Date.now()
                 },
                 { upsert: true, new: true }

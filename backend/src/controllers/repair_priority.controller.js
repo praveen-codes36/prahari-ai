@@ -1,6 +1,7 @@
 import { RepairPriority } from "../models/repair_priority.model.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
+import axios from "axios";
 
 // @desc    Get all open complaints/segments ranked by priority_score
 // @route   GET /api/priority/queue
@@ -35,28 +36,22 @@ export const calculatePriorityScore = async (req, res) => {
             throw new ApiError(400, "Either complaint_id or road_segment_id is required");
         }
 
-        // MVP: Hand-tuned weighted formula for Repair Priority
-        let score = 0;
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+        
+        const payload = {
+            complaint_id: complaint_id || "UNKNOWN",
+            defect_type: "Pothole",
+            severity: factors.severity || "HIGH",
+            road_segment_risk_score: factors.location_risk || 50.0,
+            accident_history_count: factors.accident_history || 0,
+            traffic_volume_daily: factors.traffic === 'HIGH' ? 35000 : 15000,
+            population_density: "Moderate",
+            days_open: 3
+        };
 
-        // 1. Severity weight (max 40 points)
-        const severityScores = { 'LOW': 10, 'MEDIUM': 20, 'HIGH': 30, 'CRITICAL': 40 };
-        score += severityScores[factors.severity || 'LOW'] || 0;
-
-        // 2. Location Risk weight (max 20 points, assumes location_risk is 0-100)
-        score += ((factors.location_risk || 0) * 0.2);
-
-        // 3. Accident History (max 20 points, assume 5 points per accident up to 4)
-        score += Math.min((factors.accident_history || 0) * 5, 20);
-
-        // 4. Traffic Volume (max 10 points)
-        const trafficScores = { 'LOW': 2, 'MEDIUM': 5, 'HIGH': 10 };
-        score += trafficScores[factors.traffic || 'LOW'] || 0;
-
-        // 5. Population Usage (max 10 points, arbitrary scale for MVP)
-        score += Math.min(((factors.population_usage || 0) / 1000) * 2, 10);
-
-        // Ensure score is clamped between 0 and 100
-        score = Math.max(0, Math.min(100, Math.round(score)));
+        const mlRes = await axios.post(`${ML_SERVICE_URL}/calculate_priority`, payload);
+        const data = mlRes.data;
+        const score = data.priority_score;
 
         // Define query to either find by complaint_id or road_segment_id
         const query = complaint_id ? { complaint_id } : { road_segment_id };
