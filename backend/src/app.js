@@ -50,6 +50,7 @@ import riskRouter from "./routes/risk.route.js"
 import mapRouter from "./routes/map.route.js"
 import alertRouter from "./routes/alert.route.js"
 import simulationRouter from "./routes/simulation.route.js"
+import maintenanceRouter from "./routes/maintenance.route.js"
 
 // routes declaration
 app.use("/api/risk", riskRouter)
@@ -59,5 +60,6 @@ app.use("/api/simulation", simulationRouter)
 
 // Mount the Repair Priority router at /api
 app.use("/api", repairPriorityRouter)
+app.use("/api/maintenance", maintenanceRouter)
 
 export default app

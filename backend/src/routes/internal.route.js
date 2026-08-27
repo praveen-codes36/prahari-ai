@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { calculateHealthScore } from "../controllers/road_health.controller.js";
 import { predictRisk } from "../controllers/risk.controller.js";
+import { predictMaintenance } from "../controllers/maintenance.controller.js";
 
 const router = Router();
 
@@ -9,6 +10,9 @@ router.route("/calculate-health-score").post(calculateHealthScore);
 
 // Route: /api/internal/predict-risk
 router.route("/predict-risk").post(predictRisk);
+
+// Route: /api/internal/predict-maintenance
+router.route("/predict-maintenance").post(predictMaintenance);
 
 import { detectDefectInternal, checkDuplicateInternal } from "../controllers/complaints.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
