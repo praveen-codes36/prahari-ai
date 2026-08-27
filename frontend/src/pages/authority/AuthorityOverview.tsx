@@ -1,5 +1,24 @@
-import axios from 'axios';
-
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Activity,
+  Radio,
+  Cpu,
+  ChevronRight,
+  AlertOctagon,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  Zap,
+  Truck,
+  FileCheck2,
+  Clock,
+  Sparkles,
+  BarChart3,
+  Wrench
+} from 'lucide-react';
+import apiClient from '../../services/apiClient';
 interface OverviewData {
   kpis: {
     criticalAssets: number;
@@ -41,8 +60,7 @@ export const AuthorityOverview: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await axios.get(`${apiUrl}/api/authority/overview`, {
+        const response = await apiClient.get(`/authority/overview`, {
           params: { timeRange }
         });
         if (response.data.success) {

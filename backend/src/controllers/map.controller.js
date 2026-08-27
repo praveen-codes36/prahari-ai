@@ -14,7 +14,8 @@ export const getDefectsLayer = async (req, res) => {
             const { Complaint } = await import("../models/complaint.model.js");
             // Only return complaints that are not resolved
             const openComplaints = await Complaint.find({ status: { $ne: "RESOLVED" } })
-                                                 .select("location defect_type severity status");
+                                                 .select("location defect_type severity status photo_url confidence_score assigned_department_id createdAt updatedAt")
+                                                 .populate("assigned_department_id", "name");
             defects = openComplaints;
         } catch (e) {
             // Complaint model not built yet; gracefully fallback

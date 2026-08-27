@@ -51,7 +51,7 @@ export const MyReportsPage: React.FC = () => {
           // Fix URL slashes for windows paths
           let imgPath = c.photo_url || '';
           imgPath = imgPath.replace(/\\/g, '/');
-          const imageUrl = imgPath.startsWith('http') ? imgPath : `http://localhost:5000/${imgPath}`;
+          const imageUrl = imgPath.startsWith('http') ? imgPath : `/${imgPath}`;
 
           const lat = c.location?.coordinates[1] || 0;
           const lng = c.location?.coordinates[0] || 0;
@@ -103,12 +103,17 @@ export const MyReportsPage: React.FC = () => {
         const enrichedReports = await Promise.all(mappedReports.map(async (r) => {
            if (r.location.lat !== 0 && r.location.lng !== 0) {
              try {
-                const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${r.location.lat}&longitude=${r.location.lng}&localityLanguage=en`);
-                const geoData = await res.json();
-                r.location.address = geoData.locality || `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
-                r.location.city = geoData.city || geoData.principalSubdivision || '';
-             } catch (e) {
-                r.location.address = `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+                 const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${r.location.lat}&longitude=${r.location.lng}&localityLanguage=en`);
+                 const geoData = await res.json();
+                 const parts = [];
+                 if (geoData.locality) parts.push(geoData.locality);
+                 if (geoData.city) parts.push(geoData.city);
+                 if (geoData.principalSubdivision) parts.push(geoData.principalSubdivision);
+                 if (geoData.countryName) parts.push(geoData.countryName);
+                 r.location.address = parts.length > 0 ? parts.join(', ') : `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
+                 r.location.city = '';
+              } catch (e) {
+                 r.location.address = `Lat: ${r.location.lat.toFixed(4)}, Lng: ${r.location.lng.toFixed(4)}`;
              }
            } else {
              r.location.address = 'Unknown Location';

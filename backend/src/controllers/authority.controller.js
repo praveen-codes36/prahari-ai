@@ -4,6 +4,7 @@ import { Complaint } from "../models/complaint.model.js";
 import { MaintenancePrediction } from "../models/maintenance_prediction.model.js";
 import { Ambulance } from "../models/ambulance.model.js";
 import { RepairPriority } from "../models/repair_priority.model.js";
+import { RoadSegment } from "../models/road_segment.model.js";
 
 // Utility function to generate dummy chart data for periods with zero records
 const generateEmptyChartData = (timeRange) => {
