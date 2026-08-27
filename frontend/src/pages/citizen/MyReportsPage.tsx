@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -20,13 +20,93 @@ import { SeverityBadge, StatusBadge } from '../../components/common/Badges';
 import { AIConfidenceRing } from '../../components/common/AIConfidenceRing';
 import { MOCK_REPORTS } from '../../data/mockData';
 import { DefectReport, ReportStatus } from '../../types';
+import apiClient from '../../services/apiClient';
 
 export const MyReportsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<DefectReport[]>(MOCK_REPORTS);
+  const [reports, setReports] = useState<DefectReport[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | ReportStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState<DefectReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMyReports = async () => {
+      try {
+        const res = await apiClient.get('/complaints/me');
+        const data = res.data.data;
+        
+        const mapBackendStatus = (status: string): ReportStatus => {
+          switch(status) {
+            case 'REPORTED': return 'submitted';
+            case 'AI_VERIFIED': return 'verified';
+            case 'ASSIGNED': return 'assigned';
+            case 'WORK_IN_PROGRESS': return 'in_progress';
+            case 'RESOLVED': return 'resolved';
+            default: return 'submitted';
+          }
+        };
+
+        const mappedReports: DefectReport[] = data.map((c: any) => {
+          // Fix URL slashes for windows paths
+          let imgPath = c.photo_url || '';
+          imgPath = imgPath.replace(/\\/g, '/');
+          const imageUrl = imgPath.startsWith('http') ? imgPath : `http://localhost:5000/${imgPath}`;
+
+          return {
+            id: c._id.slice(-6).toUpperCase(), // Short ID
+            title: `${(c.defect_type || 'Unknown').replace('_', ' ')} Detected`,
+            defectType: (c.defect_type || 'OTHER').toLowerCase() as any,
+            severity: (c.severity || 'MEDIUM').toLowerCase() as any,
+            status: mapBackendStatus(c.status),
+            location: {
+              lat: c.location?.coordinates[1] || 0,
+              lng: c.location?.coordinates[0] || 0,
+              address: 'GPS Coordinate Location',
+              city: 'Local Area'
+            },
+            imageUrl: imageUrl,
+            aiAnalysis: {
+              defectType: (c.defect_type || 'OTHER').toLowerCase() as any,
+              defectName: c.defect_type || 'Unknown Defect',
+              confidence: c.confidence_score || 50,
+              severity: (c.severity || 'MEDIUM').toLowerCase() as any,
+              riskScore: c.confidence_score || 50,
+              departmentRouting: c.assigned_department_id ? 'Assigned' : 'Pending',
+              priorityLevel: 'P3',
+              reasoning: {
+                edgeDetection: 'AI scanning completed.',
+                depthEstimation: 'Visual assessment recorded.',
+                trafficCorrelation: 'N/A',
+                pedestrianRisk: 'N/A'
+              }
+            },
+            reportedAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            reportedBy: { name: 'Citizen', isAnonymous: false },
+            timeline: [
+              {
+                status: 'submitted',
+                title: 'Report Submitted',
+                timestamp: new Date(c.createdAt).toLocaleDateString(),
+                description: 'Hazard report filed successfully.'
+              }
+            ],
+            commentsCount: 0,
+            upvotes: 0
+          };
+        });
+
+        setReports(mappedReports);
+      } catch (error) {
+        console.error('Failed to fetch reports:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyReports();
+  }, []);
 
   const filteredReports = reports.filter((r) => {
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -110,8 +190,13 @@ export const MyReportsPage: React.FC = () => {
       </div>
 
       {/* Reports List */}
-      <div className="space-y-3.5">
-        {filteredReports.map((report) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00daf3]"></div>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {filteredReports.map((report) => (
           <div
             key={report.id}
             onClick={() => setSelectedReport(report)}
@@ -176,7 +261,7 @@ export const MyReportsPage: React.FC = () => {
           </div>
         ))}
 
-        {filteredReports.length === 0 && (
+        {filteredReports.length === 0 && !loading && (
           <div className="text-center py-12 bg-[#151b2b] rounded-2xl border border-white/10">
             <FileText className="w-10 h-10 text-[#8c90a1] mx-auto mb-2 opacity-50" />
             <div className="text-sm font-semibold text-white">No Reports Found</div>
@@ -184,6 +269,7 @@ export const MyReportsPage: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Report Detail Modal / Drawer */}
       {selectedReport && (
