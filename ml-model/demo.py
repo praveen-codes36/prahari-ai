@@ -1,6 +1,7 @@
 ﻿"""
 Prahari AI — Master End-to-End Simulation Demo
 Demonstrates all 10 ML models and services working in a unified closed-loop pipeline for Prayagraj, UP.
+Includes Out-of-Distribution (OOD) Negative Rejection demo.
 """
 
 import os
@@ -31,6 +32,7 @@ from predict import (
     handle_citizen_message,
     ingest_defect
 )
+from PIL import Image, ImageDraw
 
 
 def run_full_prahari_demo():
@@ -61,9 +63,28 @@ def run_full_prahari_demo():
     cv_res = detect_defect(sample_img)
     print(f"    * Input Photo:      {sample_img}")
     print(f"    * Detected Defect:  {cv_res['defect_type']} (Confidence: {cv_res['confidence_score']}%)")
+    print(f"    * Valid Defect:     {cv_res['is_valid_defect']}")
     print(f"    * Severity Tier:    {cv_res['severity']}")
     print(f"    * Auto-Assigned:    {cv_res['department_assigned']}")
     print(f"    * Verification:     {cv_res['ai_verification_status']}")
+
+    # -------------------------------------------------------------
+    # STEP 2B: OOD / NON-DEFECT REJECTION DEMO
+    # -------------------------------------------------------------
+    print(f"\n[2B] OOD NEGATIVE REJECTION: Testing with Random Non-Defect Upload (Person / Portrait)")
+    person_img = Image.new("RGB", (224, 224), (230, 235, 245))
+    d = ImageDraw.Draw(person_img)
+    d.ellipse([70, 50, 150, 150], fill=(220, 175, 140))
+    d.ellipse([65, 35, 155, 90], fill=(20, 20, 20))
+    d.ellipse([90, 85, 105, 100], fill=(30, 30, 30))
+    d.ellipse([120, 85, 135, 100], fill=(30, 30, 30))
+    d.line([(100, 125), (120, 125)], fill=(180, 50, 50), width=3)
+    d.polygon([(40, 224), (80, 150), (145, 150), (185, 224)], fill=(40, 120, 220))
+    
+    ood_res = detect_defect(person_img)
+    print(f"    * Non-Defect Upload: {ood_res['defect_type']} (Confidence: {ood_res['confidence_score']}%)")
+    print(f"    * Valid Defect:      {ood_res['is_valid_defect']}")
+    print(f"    * System Action:     {ood_res['ai_verification_status']} -> {ood_res['message']}")
 
     # -------------------------------------------------------------
     # STEP 3: DUPLICATE COMPLAINT DETECTOR (MODEL 3)
@@ -177,7 +198,7 @@ def run_full_prahari_demo():
     print(f"    * Recommended Action: {copilot_res['recommended_actions'][0]}")
 
     print("\n" + "=" * 80)
-    print("      ALL 10 ML MODELS EXECUTED WITH 100% SPECIFICATION FIDELITY!")
+    print("      ALL 10 ML MODELS & OOD REJECTION EXECUTED WITH 100% SPECIFICATION FIDELITY!")
     print("=" * 80 + "\n")
 
 

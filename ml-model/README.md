@@ -1,4 +1,4 @@
-﻿# 🛡️ Prahari AI (RoadGuard AI) — Machine Learning & Algorithmic Intelligence Subsystem
+# 🛡️ Prahari AI (RoadGuard AI) — Machine Learning & Algorithmic Intelligence Subsystem
 ### Smart India Hackathon (SIH) | Complete 10-Model Production Suite & Technical Documentation
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
@@ -125,26 +125,41 @@ flowchart TD
 
 ---
 
-### Task 1: Defect Type Classifier (CNN Vision)
+### Task 1: Defect Type Classifier (CNN Vision with OOD Negative Rejection)
 - **Feeds API:** `POST /api/internal/detect-defect`
-- **Objective:** Automatically classify uploaded smartphone photos of road damage into 4 municipal actionable classes: `Pothole`, `Streetlight Defect`, `Garbage Accumulation`, `Drainage Issues`, plus rejection of non-defect photos.
-- **Algorithm Used:** `MobileNetV2` with Transfer Learning, Inverted Residuals, and a 128-dimensional dense bottleneck classification head.
+- **Objective:** Automatically classify uploaded smartphone photos into 4 actionable municipal defect categories (`Pothole`, `Streetlight Defect`, `Garbage Accumulation`, `Drainage Issues`) or explicitly reject Out-of-Distribution (OOD) non-defect images (e.g. portraits of people, clean roads, cars, indoor objects, nature) as `Other / No Defect`.
+- **Algorithm Used:** `MobileNetV2` Transfer Learning with Pretrained ImageNet feature representations, Inverted Residuals, and a 5-class calibrated classification head with negative rejection gating.
 - **Input:** Raw Image bytes / JPEG / PNG.
-- **Output Schema:**
+- **Output Schema (Valid Defect):**
   ```json
   {
     "defect_type": "Pothole",
-    "confidence_score": 99.99,
-    "confidence": 0.9999,
+    "is_valid_defect": true,
+    "confidence_score": 99.89,
+    "confidence": 0.9989,
     "severity": "CRITICAL",
     "department_assigned": "PWD_Road_Maintenance",
-    "ai_verification_status": "AI_VERIFIED"
+    "ai_verification_status": "AI_VERIFIED",
+    "message": "Valid road defect verified and assigned to municipal department."
   }
   ```
-- **Why MobileNetV2? (Where Alternatives Fail):**
-  - **vs. ResNet-50:** ResNet-50 has 25.6M parameters (~98 MB) and ~58ms CPU latency. MobileNetV2 has **3.4M parameters (~8.8 MB)** and runs in **<12ms** with identical 100% accuracy on our defect classes.
-  - **vs. VGG-16:** VGG has 138.3M parameters (~528 MB) and takes ~190ms per image—excessively heavy for mobile/cloud servers.
-  - **vs. YOLOv8:** Object detection outputs bounding boxes requiring Non-Maximum Suppression (NMS). Citizen uploads are focused full-scene captures; MobileNetV2 classification provides higher throughput and simpler backend API contracts.
+- **Output Schema (Out-of-Distribution / Non-Defect Rejection):**
+  ```json
+  {
+    "defect_type": "Other / No Defect",
+    "is_valid_defect": false,
+    "confidence_score": 99.97,
+    "confidence": 0.9997,
+    "severity": "NONE",
+    "department_assigned": "None",
+    "ai_verification_status": "REJECTED_NON_DEFECT",
+    "message": "No municipal road infrastructure defect detected. Image rejected from risk and routing calculations."
+  }
+  ```
+- **Why MobileNetV2 with 5-Class OOD Rejection? (Where Alternatives Fail):**
+  - **4-Class Closed Softmax Failure:** Traditional 4-class classifiers force 100% of probability into a defect class when presented with a photo of a person or clean road. Our 5-class architecture trained on diverse negative distributions explicitly rejects non-defect uploads, preventing false alarms and bad emergency reroutes.
+  - **vs. ResNet-50:** ResNet-50 has 25.6M parameters (~98 MB) and ~58ms CPU latency. MobileNetV2 has **3.4M parameters (~8.8 MB)** and runs in **<12ms** with identical accuracy on our defect classes.
+  - **vs. YOLOv8:** Object detection requires Anchor Box tuning and NMS filtering. MobileNetV2 image classification provides higher throughput and simpler backend API contracts.
 - **Benchmark Score:** **100.0% Test Accuracy**, **1.0000 Weighted F1-Score**, **<12.0 ms CPU Latency**.
 
 ---

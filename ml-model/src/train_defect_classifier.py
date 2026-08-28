@@ -1,6 +1,11 @@
 ﻿"""
-Optimized Fast Transfer Learning Pipeline for Road Defect Classifier.
-Uses Pretrained ImageNet MobileNetV2 with Frozen Feature Extractor + Fast Head Optimization.
+Optimized 5-Class Production Training Pipeline for Road Defect Classifier.
+Includes Out-of-Distribution (OOD) / Negative Example Rejection:
+  Class 0: Pothole
+  Class 1: Streetlight Defect
+  Class 2: Garbage Accumulation
+  Class 3: Drainage Issues
+  Class 4: Other / No Defect (People, clean roads, vehicles, indoor objects, nature)
 """
 
 import os
@@ -22,15 +27,110 @@ root_dir = os.path.dirname(current_dir) if "src" in current_dir else current_dir
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-DEFECT_CLASSES = ["Pothole", "Streetlight Defect", "Garbage Accumulation", "Drainage Issues"]
+DEFECT_CLASSES = ["Pothole", "Streetlight Defect", "Garbage Accumulation", "Drainage Issues", "Other / No Defect"]
 CLASS_TO_IDX = {cls_name: i for i, cls_name in enumerate(DEFECT_CLASSES)}
 IDX_TO_CLASS = {i: cls_name for i, cls_name in enumerate(DEFECT_CLASSES)}
 
 USER_POTHOLE_PATH = r"C:\Users\Ram Kinkar\.gemini\antigravity\brain\be4b0ec4-aa20-4275-a94a-aa33c8ee45dc\.user_uploaded\media_1787827966272.png"
 
 
-def generate_augmented_dataset(samples_per_class: int = 150) -> Tuple[List[Image.Image], List[int]]:
-    """Generate image list and labels combining real photo augmentations and clean templates."""
+def create_negative_sample(sample_type: int) -> Image.Image:
+    """
+    Generate realistic Out-of-Distribution (OOD) non-defect images:
+      0: Clean undamaged road with lane markings
+      1: Human portrait / person silhouette / face
+      2: Vehicle / car / bicycle
+      3: Nature / sky / trees / grass
+      4: Indoor room / furniture / walls
+    """
+    img = Image.new("RGB", (224, 224), (200, 200, 200))
+    draw = ImageDraw.Draw(img)
+    
+    if sample_type == 0:
+        # Clean smooth asphalt road with crisp painted yellow/white centerlines
+        asphalt_c = random.randint(70, 95)
+        img = Image.new("RGB", (224, 224), (asphalt_c, asphalt_c, asphalt_c))
+        draw = ImageDraw.Draw(img)
+        # Perspective lane stripes
+        draw.polygon([(90, 0), (105, 0), (70, 224), (95, 224)], fill=(230, 200, 40))
+        draw.polygon([(120, 0), (135, 0), (130, 224), (155, 224)], fill=(230, 200, 40))
+        draw.line([(10, 0), (0, 224)], fill=(240, 240, 240), width=4)
+        draw.line([(214, 0), (224, 224)], fill=(240, 240, 240), width=4)
+        return img.filter(ImageFilter.GaussianBlur(0.3))
+        
+    elif sample_type == 1:
+        # Human Portrait / Person
+        bg_color = (random.randint(180, 240), random.randint(180, 240), random.randint(200, 250))
+        img = Image.new("RGB", (224, 224), bg_color)
+        draw = ImageDraw.Draw(img)
+        # Head & Face
+        skin_tones = [(240, 195, 160), (220, 170, 130), (180, 130, 95), (140, 95, 65)]
+        skin = random.choice(skin_tones)
+        cx, cy = 112, 90
+        draw.ellipse([cx - 35, cy - 45, cx + 35, cy + 45], fill=skin)
+        # Hair
+        hair_color = (random.randint(15, 45), random.randint(15, 35), random.randint(15, 30))
+        draw.ellipse([cx - 38, cy - 52, cx + 38, cy - 15], fill=hair_color)
+        # Eyes, Nose, Mouth
+        draw.ellipse([cx - 16, cy - 8, cx - 8, cy], fill=(30, 30, 30))
+        draw.ellipse([cx + 8, cy - 8, cx + 16, cy], fill=(30, 30, 30))
+        draw.line([(cx, cy + 5), (cx, cy + 18)], fill=(skin[0]-30, skin[1]-30, skin[2]-30), width=2)
+        draw.line([(cx - 12, cy + 28), (cx + 12, cy + 28)], fill=(180, 60, 60), width=3)
+        # Shoulders / Clothes
+        shirt_color = (random.randint(30, 220), random.randint(30, 220), random.randint(30, 220))
+        draw.polygon([(cx - 75, 224), (cx - 30, 140), (cx + 30, 140), (cx + 75, 224)], fill=shirt_color)
+        return img.filter(ImageFilter.GaussianBlur(0.5))
+        
+    elif sample_type == 2:
+        # Vehicle / Car
+        img = Image.new("RGB", (224, 224), (180, 190, 200))
+        draw = ImageDraw.Draw(img)
+        # Ground
+        draw.rectangle([0, 160, 224, 224], fill=(90, 90, 90))
+        # Car body
+        car_color = (random.randint(40, 220), random.randint(40, 180), random.randint(40, 220))
+        draw.rectangle([35, 110, 190, 165], fill=car_color)
+        draw.polygon([(55, 110), (75, 75), (150, 75), (170, 110)], fill=car_color)
+        # Windows
+        draw.polygon([(60, 108), (77, 80), (108, 80), (108, 108)], fill=(180, 220, 240))
+        draw.polygon([(112, 108), (112, 80), (145, 80), (165, 108)], fill=(180, 220, 240))
+        # Wheels
+        draw.ellipse([50, 150, 85, 185], fill=(20, 20, 20))
+        draw.ellipse([58, 158, 77, 177], fill=(180, 180, 180))
+        draw.ellipse([140, 150, 175, 185], fill=(20, 20, 20))
+        draw.ellipse([148, 158, 167, 177], fill=(180, 180, 180))
+        return img.filter(ImageFilter.GaussianBlur(0.5))
+        
+    elif sample_type == 3:
+        # Nature: Blue sky + green grass/trees
+        img = Image.new("RGB", (224, 224), (120, 190, 240))
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([0, 140, 224, 224], fill=(60, 160, 50))
+        # Sun
+        draw.ellipse([160, 25, 200, 65], fill=(255, 235, 60))
+        # Tree
+        draw.rectangle([65, 100, 85, 160], fill=(110, 70, 40))
+        draw.ellipse([30, 40, 120, 120], fill=(40, 130, 35))
+        return img.filter(ImageFilter.GaussianBlur(0.5))
+        
+    else:
+        # Indoor room: Wall, table, laptop/books
+        img = Image.new("RGB", (224, 224), (220, 215, 205))
+        draw = ImageDraw.Draw(img)
+        # Wooden floor/desk
+        draw.rectangle([0, 130, 224, 224], fill=(160, 110, 65))
+        # Window
+        draw.rectangle([130, 20, 200, 90], fill=(180, 215, 240), outline=(80, 80, 80), width=3)
+        draw.line([(165, 20), (165, 90)], fill=(80, 80, 80), width=2)
+        draw.line([(130, 55), (200, 55)], fill=(80, 80, 80), width=2)
+        # Laptop on desk
+        draw.polygon([(45, 135), (95, 135), (105, 175), (35, 175)], fill=(180, 180, 185))
+        draw.polygon([(45, 135), (95, 135), (95, 95), (45, 95)], fill=(40, 40, 45))
+        return img.filter(ImageFilter.GaussianBlur(0.5))
+
+
+def generate_augmented_dataset_5class(samples_per_class: int = 150) -> Tuple[List[Image.Image], List[int]]:
+    """Generate image list and labels for 5 classes including OOD negative examples."""
     images = []
     labels = []
     
@@ -44,7 +144,6 @@ def generate_augmented_dataset(samples_per_class: int = 150) -> Tuple[List[Image
             
     for i in range(samples_per_class):
         if user_img is not None and (i % 2 == 0 or i < 60):
-            # Crop, flip, brightness, zoom of user real-world pothole
             w, h = user_img.size
             crop_w = int(w * random.uniform(0.70, 0.95))
             crop_h = int(h * random.uniform(0.70, 0.95))
@@ -59,13 +158,11 @@ def generate_augmented_dataset(samples_per_class: int = 150) -> Tuple[List[Image
             images.append(crop_img)
             labels.append(0)
         else:
-            # Synthetic asphalt pothole
             asphalt_c = random.randint(60, 90)
             img = Image.new("RGB", (224, 224), (asphalt_c, asphalt_c, asphalt_c))
             draw = ImageDraw.Draw(img)
             cx, cy = 112 + random.randint(-20, 20), 112 + random.randint(-15, 25)
             rx, ry = random.randint(40, 75), random.randint(28, 55)
-            # Jagged crater
             pts = [(int(cx + np.cos(a) * rx * random.uniform(0.8, 1.2)), int(cy + np.sin(a) * ry * random.uniform(0.8, 1.2))) for a in np.linspace(0, 2*np.pi, 12, endpoint=False)]
             draw.polygon(pts, fill=(25, 20, 18), outline=(15, 12, 10))
             draw.ellipse([cx - rx//2, cy - ry//2, cx + rx//2, cy + ry//2], fill=(15, 12, 10))
@@ -108,12 +205,19 @@ def generate_augmented_dataset(samples_per_class: int = 150) -> Tuple[List[Image
         images.append(img.filter(ImageFilter.GaussianBlur(0.8)))
         labels.append(3)
         
+    # 5. Class 4: Other / No Defect (Negative Examples)
+    for i in range(samples_per_class):
+        stype = i % 5
+        neg_img = create_negative_sample(sample_type=stype)
+        images.append(neg_img)
+        labels.append(4)
+        
     return images, labels
 
 
-def train_fast_transfer_model():
+def train_5class_defect_classifier():
     print("=" * 70)
-    print("FAST TRANSFER LEARNING WITH PRETRAINED IMAGENET MOBILENETV2")
+    print("TRAINING 5-CLASS DEFECT CLASSIFIER WITH NEGATIVE REJECTION")
     print("=" * 70)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -124,16 +228,15 @@ def train_fast_transfer_model():
     base_model.eval()
     base_model.to(device)
     
-    # Preprocessing transform
     preprocess = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
-    # 2. Extract Features for All Samples
-    print("Generating dataset and extracting backbone feature vectors...")
-    images, labels = generate_augmented_dataset(samples_per_class=120)
+    # 2. Extract Features for All 5 Classes
+    print("Generating 5-class dataset and extracting backbone feature vectors...")
+    images, labels = generate_augmented_dataset_5class(samples_per_class=120)
     
     features_list = []
     with torch.no_grad():
@@ -159,19 +262,19 @@ def train_fast_transfer_model():
     train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
     
-    # 4. Train Classification Head
+    # 4. Train Classification Head (5 Output Units)
     classifier_head = nn.Sequential(
         nn.Dropout(p=0.2),
         nn.Linear(1280, 128),
         nn.ReLU(inplace=True),
         nn.Dropout(p=0.1),
-        nn.Linear(128, 4)
+        nn.Linear(128, 5)
     ).to(device)
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(classifier_head.parameters(), lr=3e-3, weight_decay=1e-4)
     
-    print("\nTraining classification head...")
+    print("\nTraining 5-class classification head...")
     epochs = 25
     best_val_acc = 0.0
     
@@ -229,8 +332,8 @@ def train_fast_transfer_model():
         "idx_to_class": IDX_TO_CLASS,
         "class_to_idx": CLASS_TO_IDX
     }, save_path)
-    print(f"\n[SUCCESS] Checkpoint saved to: {save_path} (Val Acc: {best_val_acc*100:.2f}%)")
+    print(f"\n[SUCCESS] 5-Class Checkpoint saved to: {save_path} (Val Acc: {best_val_acc*100:.2f}%)")
 
 
 if __name__ == "__main__":
-    train_fast_transfer_model()
+    train_5class_defect_classifier()

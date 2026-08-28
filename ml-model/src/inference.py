@@ -1,7 +1,7 @@
 ﻿"""
 Unified Production Inference Engine for Prahari AI.
-Encapsulates all 10 models and algorithmic services defined in the SIH ML Blueprint:
-  1. Defect Detection CV Model (MobileNetV2)
+Encapsulates all 10 models and algorithmic services with 5-class OOD negative rejection:
+  1. Defect Detection CV Model (MobileNetV2 with Other / No Defect class)
   2. Defect Severity Estimation Model
   3. Duplicate Complaint Detector (Geo-distance + Image Cosine Similarity)
   4. Accident Risk Surface Predictor (XGBoost / Random Forest)
@@ -47,18 +47,19 @@ from src.routing_integration import EmergencyRoutingEngine, compute_dynamic_edge
 from src.copilot_engine import AuthorityCopilotEngine
 from src.citizen_chatbot import CitizenChatbotEngine
 
-DEFECT_CLASSES = ["Pothole", "Streetlight Defect", "Garbage Accumulation", "Drainage Issues"]
+DEFECT_CLASSES = ["Pothole", "Streetlight Defect", "Garbage Accumulation", "Drainage Issues", "Other / No Defect"]
 
 DEPARTMENT_MAPPING = {
     "Pothole": "PWD_Road_Maintenance",
     "Streetlight Defect": "UPPCL_Streetlight_Cell",
     "Garbage Accumulation": "Prayagraj_Nagar_Nigam_Sanitation",
     "Drainage Issues": "Jal_Sansthan_Drainage_Div",
+    "Other / No Defect": "None"
 }
 
 
-def build_mobilenetv2_model(num_classes: int = 4) -> nn.Module:
-    """Build MobileNetV2 architecture matching trained checkpoint."""
+def build_mobilenetv2_model(num_classes: int = 5) -> nn.Module:
+    """Build MobileNetV2 architecture matching trained 5-class checkpoint."""
     model = models.mobilenet_v2(weights=None)
     in_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
@@ -84,9 +85,9 @@ class RoadGuardInferenceEngine:
         self.models_dir = os.path.join(root_dir, models_dir) if not os.path.isabs(models_dir) else models_dir
         self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu"))
 
-        # 1. Load Computer Vision Defect Model
+        # 1. Load Computer Vision Defect Model (5 Classes)
         cv_weights_path = os.path.join(self.models_dir, "defect_classifier_mobilenetv2.pt")
-        self.cv_model = build_mobilenetv2_model(num_classes=4)
+        self.cv_model = build_mobilenetv2_model(num_classes=5)
         if os.path.exists(cv_weights_path):
             checkpoint = torch.load(cv_weights_path, map_location=self.device)
             self.cv_model.load_state_dict(checkpoint["model_state_dict"])
@@ -140,7 +141,7 @@ class RoadGuardInferenceEngine:
     # -------------------------------------------------------------
     def predict_defect(self, image_input: Union[str, bytes, Image.Image]) -> Dict[str, Any]:
         """
-        Model 1 & 2: Classify road defect image and estimate severity level.
+        Model 1 & 2: Classify road defect image with Out-of-Distribution (OOD) negative rejection.
         """
         if isinstance(image_input, str):
             image = Image.open(image_input).convert("RGB")
@@ -161,27 +162,44 @@ class RoadGuardInferenceEngine:
         top_class = self.idx_to_class[top_idx]
         confidence = float(probabilities[top_idx])
 
-        # Severity Estimation Logic
+        # OOD Rejection Check
+        is_valid_defect = (top_class != "Other / No Defect") and (confidence >= 0.50)
+
+        if not is_valid_defect:
+            return {
+                "defect_type": "Other / No Defect",
+                "is_valid_defect": False,
+                "confidence_score": round(confidence * 100.0, 2),
+                "confidence": round(confidence, 4),
+                "severity": "NONE",
+                "severity_estimate": "NONE",
+                "probabilities": {self.idx_to_class[i]: round(float(probabilities[i]), 4) for i in range(len(self.classes))},
+                "department_assigned": "None",
+                "ai_verification_status": "REJECTED_NON_DEFECT",
+                "message": "No municipal road infrastructure defect detected. Image rejected from risk and routing calculations."
+            }
+
+        # Severity Estimation Logic for Valid Defects
         if confidence > 0.90:
             severity = "CRITICAL" if top_class in ["Pothole", "Drainage Issues"] else "HIGH"
         elif confidence > 0.70:
             severity = "HIGH" if top_class == "Pothole" else "MEDIUM"
-        elif confidence > 0.50:
-            severity = "MEDIUM"
         else:
-            severity = "LOW"
+            severity = "MEDIUM"
 
         prob_dict = {self.idx_to_class[i]: round(float(probabilities[i]), 4) for i in range(len(self.classes))}
 
         return {
             "defect_type": top_class,
+            "is_valid_defect": True,
             "confidence_score": round(confidence * 100.0, 2),
             "confidence": round(confidence, 4),
             "severity": severity,
             "severity_estimate": severity,
             "probabilities": prob_dict,
             "department_assigned": DEPARTMENT_MAPPING.get(top_class, "PWD_Road_Maintenance"),
-            "ai_verification_status": "AI_VERIFIED" if confidence >= 0.50 else "REQUIRES_MANUAL_REVIEW"
+            "ai_verification_status": "AI_VERIFIED",
+            "message": "Valid road defect verified and assigned to municipal department."
         }
 
     # -------------------------------------------------------------
@@ -198,6 +216,15 @@ class RoadGuardInferenceEngine:
         """
         Model 3: Check if complaint is a duplicate of existing open tickets.
         """
+        if defect_type.lower() in ["other / no defect", "other", "none"]:
+            return {
+                "is_duplicate": False,
+                "duplicate_of": None,
+                "duplicate_similarity_score": 0.0,
+                "matched_distance_meters": None,
+                "reasoning": "Non-defect image. Skipped duplicate evaluation."
+            }
+
         if existing_complaints is None:
             existing_complaints = self.spatial_index.defect_records
 
@@ -334,9 +361,7 @@ class RoadGuardInferenceEngine:
                             time_since_last_repair_days: int = 90,
                             is_monsoon_season: bool = False,
                             road_type: str = "Major Arterial") -> Dict[str, Any]:
-        """
-        Model 5: Forecast 30-day degradation risk and proactive action window.
-        """
+        """Model 5: Forecast 30-day degradation risk and proactive action window."""
         return self.maintenance_forecaster.predict_maintenance(
             road_segment_id=road_segment_id,
             current_risk_score=current_risk_score,
@@ -361,9 +386,7 @@ class RoadGuardInferenceEngine:
                                lighting_coverage_pct: float = 85.0,
                                drainage_functional: bool = True,
                                surface_quality_index: float = 8.0) -> Dict[str, Any]:
-        """
-        Model 6: Compute transparent, auditable 0-100 road health index.
-        """
+        """Model 6: Compute transparent, auditable 0-100 road health index."""
         return self.road_health_model.calculate_health_score(
             road_segment_id=road_segment_id,
             accident_history_count=accident_history_count,
@@ -389,9 +412,7 @@ class RoadGuardInferenceEngine:
                                   traffic_volume_daily: int = 20000,
                                   population_density: str = "High",
                                   days_open: int = 3) -> Dict[str, Any]:
-        """
-        Model 7: Calculate backlog triage priority score (0-100).
-        """
+        """Model 7: Calculate backlog triage priority score (0-100)."""
         return self.priority_ranking_model.calculate_priority(
             complaint_id=complaint_id,
             defect_type=defect_type,
@@ -404,9 +425,7 @@ class RoadGuardInferenceEngine:
         )
 
     def rank_repair_backlog(self, complaints: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Model 7: Rank an entire queue of open defect tickets into an ordered action list.
-        """
+        """Model 7: Rank an entire queue of open defect tickets into an ordered action list."""
         return self.priority_ranking_model.rank_backlog(complaints)
 
     # -------------------------------------------------------------
@@ -419,9 +438,7 @@ class RoadGuardInferenceEngine:
                                 dest_lng: Optional[float] = None,
                                 weather: str = "Clear",
                                 time_of_day: str = "Evening Rush") -> Dict[str, Any]:
-        """
-        Model 8: Calculate safety-penalized optimal emergency route and nearest trauma centers.
-        """
+        """Model 8: Calculate safety-penalized optimal emergency route and nearest trauma centers."""
         return self.routing_engine.compute_emergency_route(
             start_lat=start_lat,
             start_lng=start_lng,
@@ -435,9 +452,7 @@ class RoadGuardInferenceEngine:
     # MODEL 9: AI AUTHORITY COPILOT
     # -------------------------------------------------------------
     def query_authority_copilot(self, query: str, retrieved_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        Model 9: Natural language query and factor explainability for city administrators.
-        """
+        """Model 9: Natural language query and factor explainability for city administrators."""
         return self.copilot_engine.query(user_query=query, retrieved_data=retrieved_data)
 
     # -------------------------------------------------------------
@@ -447,9 +462,7 @@ class RoadGuardInferenceEngine:
                                message_text: str,
                                image_input: Optional[Union[str, bytes, Image.Image]] = None,
                                user_id: str = "CITIZEN_DEFAULT") -> Dict[str, Any]:
-        """
-        Model 10: Conversational assistant coordinating defect intake, status tracking, and dispatch.
-        """
+        """Model 10: Conversational assistant coordinating defect intake, status tracking, and dispatch."""
         return self.chatbot_engine.handle_message(
             message_text=message_text,
             image_input=image_input,
@@ -466,7 +479,18 @@ class RoadGuardInferenceEngine:
                        severity: str = "Moderate",
                        status: str = "AI Verified",
                        photo_url: str = "") -> Dict[str, Any]:
-        """Dynamically ingest verified defect into live spatial index."""
+        """
+        Dynamically ingest verified defect into live spatial index.
+        Rejects non-defect uploads to prevent polluting the risk surface.
+        """
+        if defect_type.lower() in ["other / no defect", "other", "none", "no defect"]:
+            return {
+                "status": "rejected",
+                "message": "Ignored non-defect upload. Spatial risk index was not modified.",
+                "defect": None,
+                "total_active_defects_indexed": len(self.spatial_index.defect_records)
+            }
+
         record = {
             "id": f"REP-LIVE-{np.random.randint(100000, 999999)}",
             "defect_type": defect_type,
@@ -480,6 +504,7 @@ class RoadGuardInferenceEngine:
         }
         self.spatial_index.add_defect(record)
         return {
+            "status": "success",
             "message": "Defect ingested into live spatial index successfully",
             "defect": record,
             "total_active_defects_indexed": len(self.spatial_index.defect_records)
