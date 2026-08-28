@@ -123,7 +123,7 @@ export const MaintenanceCommandCenter: React.FC = () => {
             Maintenance Command Center
           </h1>
           <p className="text-xs md:text-sm text-slate-300">
-            Convert infrastructure intelligence into field action. Assign paver fleets, track cold-mix batches, and manage repair lifecycles.
+            Convert road network smart system into field action. Assign paver fleets, track cold-mix batches, and manage repair lifecycles.
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export const MaintenanceCommandCenter: React.FC = () => {
         <div className="bg-[#0e1626] p-4 rounded-xl border border-red-500/40 shadow-lg bg-red-950/20">
           <div className="text-[10px] font-mono text-red-400 uppercase font-bold">P1 CRITICAL</div>
           <div className="text-2xl font-black text-red-400 mt-1 font-mono animate-pulse">07</div>
-          <div className="text-[10px] font-mono text-red-300 mt-1">Requires 6h intervention</div>
+          <div className="text-[10px] font-mono text-red-300 mt-1">Requires 6h repair</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-emerald-500/30 shadow-lg">
@@ -187,7 +187,7 @@ export const MaintenanceCommandCenter: React.FC = () => {
               AI Generated Maintenance Dispatch Queue
             </h3>
             <p className="text-xs text-slate-400">
-              Ranked automatically by public safety impact, traffic density, and failure velocity
+              Ranked automatically by public safety impact, traffic density, and failure speed
             </p>
           </div>
 

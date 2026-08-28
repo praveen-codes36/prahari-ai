@@ -178,7 +178,7 @@ export const EmergencyRouteOptimizer: React.FC = () => {
                 {route.aiAssessment}
               </p>
 
-              {/* Preemption Signals Tag */}
+              {/* Priority Access Signals Tag */}
               <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono">
                 <span className="text-[#8c90a1]">Signals Preempted:</span>
                 <strong className="text-[#00daf3]">{route.signalPreemptionNodes} Intersections</strong>

@@ -21,7 +21,7 @@ export const GlobalRiskMapPage: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            Global Infrastructure Risk Map
+            Global Road Network Risk Map
           </h1>
         </div>
 

@@ -112,14 +112,14 @@ export const InfrastructureMap: React.FC<InfrastructureMapProps> = ({
   return (
     <div
       className="relative w-full h-full min-h-[560px] lg:min-h-[660px] flex flex-col justify-between p-4 md:p-6 select-none overflow-hidden rounded-3xl bg-[#060a14] border border-slate-800/90 shadow-2xl"
-      id="india-infrastructure-map-container"
+      id="india-road network-map-container"
     >
-      {/* Background Deep Space Grid & Subtle Neural Ambient Glow */}
+      {/* Background Deep Space Grid & Subtle Smart Ambient Glow */}
       <div className="absolute inset-0 grid-pattern opacity-25 pointer-events-none" />
       <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Top Map Header & Live Telemetry Counters */}
+      {/* Top Map Header & Live Data Info Counters */}
       <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center">
@@ -137,7 +137,7 @@ export const InfrastructureMap: React.FC<InfrastructureMapProps> = ({
           </div>
         </div>
 
-        {/* Real-Time Telemetry Badges */}
+        {/* Real-Time Data Info Badges */}
         <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono">
           <span className="px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-slate-300">
             AI NODES: <strong className="text-cyan-400 font-bold">284</strong>
@@ -237,7 +237,7 @@ export const InfrastructureMap: React.FC<InfrastructureMapProps> = ({
             <line x1="500" y1="80" x2="500" y2="850" stroke="#00e3fd" strokeDasharray="3 6" strokeWidth="0.8" />
           </g>
 
-          {/* LAYER 4 & 6: Infrastructure Network Arterial Lines & Moving Telemetry Particles */}
+          {/* LAYER 4 & 6: Road Network Network Arterial Lines & Moving Data Info Particles */}
           <InfrastructureRoutes edges={GEO_NETWORK_EDGES} nodesMap={nodesMap} />
 
           {/* LAYER 8: Emergency Response Active EMS-42 Unit on Mumbai-Pune corridor */}
@@ -273,7 +273,7 @@ export const InfrastructureMap: React.FC<InfrastructureMapProps> = ({
             </g>
           </g>
 
-          {/* LAYER 5, 9 & 10: Projected City Nodes, Risk Pulsers & Telemetry Labels */}
+          {/* LAYER 5, 9 & 10: Projected City Nodes, Risk Pulsers & Data Info Labels */}
           <InfrastructureNodes
             projectedNodes={projectedNodes}
             selectedNode={selectedNode}
@@ -285,7 +285,7 @@ export const InfrastructureMap: React.FC<InfrastructureMapProps> = ({
         </svg>
       </div>
 
-      {/* Floating Dynamic Map Alert & Route Telemetry Bottom Matrix */}
+      {/* Floating Dynamic Map Alert & Route Data Info Bottom Matrix */}
       <MapTelemetry />
     </div>
   );

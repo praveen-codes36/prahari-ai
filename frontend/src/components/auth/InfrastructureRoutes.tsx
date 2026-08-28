@@ -8,7 +8,7 @@ interface InfrastructureRoutesProps {
 
 export const InfrastructureRoutes: React.FC<InfrastructureRoutesProps> = ({ edges, nodesMap }) => {
   return (
-    <g className="infrastructure-routes-layer pointer-events-none">
+    <g className="road network-routes-layer pointer-events-none">
       {edges.map((edge) => {
         const fromPos = nodesMap.get(edge.from);
         const toPos = nodesMap.get(edge.to);
@@ -35,7 +35,7 @@ export const InfrastructureRoutes: React.FC<InfrastructureRoutesProps> = ({ edge
               className={isEmergency ? 'drop-shadow-[0_0_10px_rgba(0,227,253,0.8)]' : ''}
             />
 
-            {/* Moving Telemetry Particle Animation on Routes */}
+            {/* Moving Data Info Particle Animation on Routes */}
             <path
               d={pathData}
               fill="none"

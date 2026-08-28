@@ -14,7 +14,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ selectedRole, onSele
       role: 'authority',
       icon: <ShieldCheck className="w-4 h-4 text-cyan-400" />,
       label: 'AUTHORITY',
-      sub: 'Infrastructure HQ',
+      sub: 'Road Network HQ',
       badge: 'PWD / NHAI',
     },
     {

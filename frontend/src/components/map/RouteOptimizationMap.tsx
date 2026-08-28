@@ -171,7 +171,7 @@ export const RouteOptimizationMap: React.FC<RouteOptimizationMapProps> = ({
         })}
       </div>
 
-      {/* Telemetry Live Badge */}
+      {/* Data Info Live Badge */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#151b2b]/90 backdrop-blur-md border border-white/10 text-[10px] font-mono text-[#8c90a1]">
         <span className="w-2 h-2 rounded-full bg-[#00daf3] animate-pulse"></span>
         SIGNAL PREEMPTION: 9 NODES ARMED

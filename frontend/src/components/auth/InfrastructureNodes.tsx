@@ -25,7 +25,7 @@ export const InfrastructureNodes: React.FC<InfrastructureNodesProps> = ({
   scanProgress,
 }) => {
   return (
-    <g className="infrastructure-nodes-layer">
+    <g className="road network-nodes-layer">
       {projectedNodes.map(({ x, y, node }) => {
         const isSelected = selectedNode?.id === node.id;
         const isHovered = hoveredNode?.id === node.id;
@@ -104,7 +104,7 @@ export const InfrastructureNodes: React.FC<InfrastructureNodesProps> = ({
               {node.code} · {node.healthPct}%
             </text>
 
-            {/* Active Hover / Selected Interactive Telemetry Callout */}
+            {/* Active Hover / Selected Interactive Data Info Callout */}
             {(isSelected || isHovered) && (
               <g transform="translate(-10, -52)" className="pointer-events-none z-50 animate-in fade-in zoom-in-95 duration-150">
                 <rect

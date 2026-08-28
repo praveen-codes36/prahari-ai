@@ -77,7 +77,7 @@ export const RoadHealthAnalytics: React.FC = () => {
             Road Network Health Analytics
           </h1>
           <p className="text-xs md:text-sm text-[#8c90a1]">
-            Comprehensive PCI (Pavement Condition Index) scoring, monsoon weathering rates, and axle-load degradation forecasts.
+            Comprehensive PCI (Pavement Condition Index) scoring, monsoon weathering rates, and axle-load damage forecasts.
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export const RoadHealthAnalytics: React.FC = () => {
             </span>
             <span className="text-3xl font-bold text-white font-mono">{avgHealthScore}/100</span>
             <span className="text-[11px] font-mono text-[#ffa000] block mt-1">
-              -4.2% Degradation this Monsoon
+              -4.2% Damage this Monsoon
             </span>
           </div>
           <HealthScoreCircle score={avgHealthScore} size={54} />
@@ -126,7 +126,7 @@ export const RoadHealthAnalytics: React.FC = () => {
 
         <div className="bg-[#151b2b] p-5 rounded-2xl border border-white/10">
           <span className="text-[10px] font-mono text-[#8c90a1] uppercase block">
-            Active Telemetry Sensors
+            Active Data Info Sensors
           </span>
           <span className="text-3xl font-bold text-[#00daf3] font-mono">142 Live</span>
           <span className="text-[11px] font-mono text-emerald-400 block mt-1">
@@ -139,7 +139,7 @@ export const RoadHealthAnalytics: React.FC = () => {
       <div className="bg-[#151b2b] rounded-2xl border border-white/10 overflow-hidden shadow-2xl space-y-4 p-5">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#00daf3]" />
-          Monitored Road Corridors & Degradation Telemetry
+          Monitored Road Corridors & Damage Data Info
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -171,7 +171,7 @@ export const RoadHealthAnalytics: React.FC = () => {
                   <span className="text-white font-bold">{segment.lightingStatus}</span>
                 </div>
                 <div className="bg-[#0d1322] p-2 rounded-lg border border-white/5">
-                  <span className="text-[9px] text-[#8c90a1] block">Anomalies</span>
+                  <span className="text-[9px] text-[#8c90a1] block">Issues</span>
                   <span className="text-[#ffb4ab] font-bold">{segment.activeAnomaliesCount}</span>
                 </div>
               </div>

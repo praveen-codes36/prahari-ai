@@ -204,7 +204,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
               <div className="space-y-1">
                 <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-cyan-400" />
-                  Infrastructure Corridors
+                  Road Network Corridors
                 </div>
                 {filteredRoads.map((road) => (
                   <div
@@ -301,9 +301,9 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
         )}
       </div>
 
-      {/* Center/Right Telemetry & Role Action Cluster */}
+      {/* Center/Right Data Info & Role Action Cluster */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* System & AI Operational Telemetry (Desktop) */}
+        {/* System & AI Operational Data Info (Desktop) */}
         <div className="hidden xl:flex items-center gap-3 px-3 py-1.5 bg-[#0e1626] border border-slate-800 rounded-xl text-[10px] font-mono">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -328,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
           <button
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             className="relative p-2 rounded-xl bg-[#0e1626] hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-colors"
-            title="System Alerts & Incident Telemetry"
+            title="System Alerts & Incident Data Info"
           >
             <Bell className="w-4 h-4" />
             {criticalAlertCount > 0 && (

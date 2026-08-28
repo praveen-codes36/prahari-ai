@@ -57,7 +57,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
               estimatedCatastrophicCostInr: item.estimated_catastrophic_cost || 2500000,
               expectedDowntimeDays: 5,
               publicImpactScore: 85,
-              aiPredictionSummary: item.reasoning?.join(' ') || 'Risk predicted based on historical complaint velocity and structural decay rates.',
+              aiPredictionSummary: item.reasoning?.join(' ') || 'Risk predicted based on historical complaint speed and structural decay rates.',
               stressFactors: [
                 { name: 'Axle Load Shear', level: 'HIGH', description: 'Heavy freight divergence.' },
                 { name: 'Monsoon Cavitation', level: 'MEDIUM', description: 'Subgrade washout.' }
@@ -91,7 +91,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
   // Work Order Modal State
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [workOrderSuccess, setWorkOrderSuccess] = useState(false);
-  const [targetDepartment, setTargetDepartment] = useState('NHAI Heavy Civil Triage Cell');
+  const [targetDepartment, setTargetDepartment] = useState('NHAI Heavy Civil Priority Check Cell');
   const [scheduledInterventionDate, setScheduledInterventionDate] = useState('Within 7 Days');
   const [assignedCrew, setAssignedCrew] = useState('Team Alpha (Squad 04)');
 
@@ -210,17 +210,17 @@ export const PredictiveMaintenancePage: React.FC = () => {
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[10px] font-mono uppercase tracking-widest text-[#00e3fd] bg-cyan-950/70 px-2.5 py-0.5 rounded border border-cyan-500/30 flex items-center gap-1.5">
               <Sparkles className="w-3 h-3 text-[#00e3fd] animate-pulse" />
-              PRAHARI DEGRADATION FORECASTING MODEL
+              PRAHARI FUTURE DAMAGE PREDICTIONS
             </span>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-              30d–90d AI PROJECTION
+              30-90 DAY PREDICTION
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Predictive Infrastructure Maintenance
+            Future Road Maintenance
           </h1>
           <p className="text-xs md:text-sm text-slate-300 max-w-3xl mt-1">
-            Forecasting structural shear, subgrade washout, and elastomer fatigue 30 to 90 days before visible surface collapse — unlocking timely preventive micro-interventions.
+            Predicting road and bridge damage 30 to 90 days before it happens, so repairs can be done early.
           </p>
         </div>
 
@@ -230,7 +230,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-400 hover:from-blue-500 hover:to-cyan-300 text-[#001738] font-black text-xs shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
           >
             <FileCheck2 className="w-4 h-4" />
-            <span>Generate Preventive Work Order</span>
+            <span>Create Repair Order</span>
           </button>
         </div>
       </div>
@@ -239,7 +239,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="p-4 rounded-2xl bg-[#0e1626] border border-slate-800 space-y-1">
           <div className="text-[10px] font-mono uppercase text-slate-400 flex items-center justify-between">
-            <span>MONITORED CORRIDORS</span>
+            <span>TRACKED ROADS</span>
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
           </div>
           <div className="text-2xl font-mono font-black text-white">{assets.length} Assets</div>
@@ -248,7 +248,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-[#0e1626] border border-amber-500/30 space-y-1">
           <div className="text-[10px] font-mono uppercase text-amber-400 flex items-center justify-between">
-            <span>HIGH DEGRADATION RISK</span>
+            <span>HIGH DAMAGE RISK</span>
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
           </div>
           <div className="text-2xl font-mono font-black text-amber-300">
@@ -259,7 +259,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-[#0e1626] border border-cyan-500/30 space-y-1">
           <div className="text-[10px] font-mono uppercase text-cyan-400 flex items-center justify-between">
-            <span>PREVENTIVE BUDGET NEEDED</span>
+            <span>ESTIMATED REPAIR COST</span>
             <DollarSign className="w-3.5 h-3.5 text-cyan-400" />
           </div>
           <div className="text-2xl font-mono font-black text-cyan-300">
@@ -270,7 +270,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
 
         <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900 border border-emerald-500/40 space-y-1">
           <div className="text-[10px] font-mono uppercase text-emerald-400 flex items-center justify-between">
-            <span>DISASTER LOSS AVOIDED</span>
+            <span>MONEY SAVED BY FIXING EARLY</span>
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           </div>
           <div className="text-2xl font-mono font-black text-emerald-300">
@@ -334,7 +334,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
         {/* Left Column (5 Cols): Predictive Assets Feed */}
         <div className="lg:col-span-5 space-y-3">
           <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-400 uppercase px-1">
-            <span>PREDICTIVE RISK CORRIDORS ({filteredAssets.length})</span>
+            <span>AT-RISK ROADS ({filteredAssets.length})</span>
             <span className="text-[10px] text-cyan-400">Click to inspect</span>
           </div>
 
@@ -410,7 +410,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
                   <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-0.5">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3 text-amber-400" />
-                      Intervention Window: <strong className="text-amber-300 font-bold">{asset.recommendedInterventionDays} Days</strong>
+                      Repair Window: <strong className="text-amber-300 font-bold">{asset.recommendedInterventionDays} Days</strong>
                     </span>
                     <span className="text-slate-400">Impact Score: {asset.publicImpactScore}/100</span>
                   </div>
@@ -420,7 +420,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column (7 Cols): 30/60/90 Day Degradation Curve & What-If Workbench */}
+        {/* Right Column (7 Cols): 30/60/90 Day Damage Curve & What-If Workbench */}
         <div className="lg:col-span-7 space-y-6">
           {/* Main Inspection Workbench Card */}
           <div className="bg-[#0e1626] p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
@@ -451,12 +451,12 @@ export const PredictiveMaintenancePage: React.FC = () => {
               </div>
             </div>
 
-            {/* AI Degradation Curve Trajectory (SVG Visualization) */}
+            {/* AI Damage Curve Trend (SVG Visualization) */}
             <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-3">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-white font-bold uppercase flex items-center gap-1.5">
                   <TrendingUp className="w-4 h-4 text-cyan-400" />
-                  Structural Health Degradation Projection (0 to 90 Days):
+                  Road Damage Prediction (0 to 90 Days):
                 </span>
                 <span className="text-slate-400">
                   Failure Risk: <strong className="text-red-400 font-bold">{dynamicHealth.failureProb}%</strong>
@@ -467,7 +467,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
               <div className="relative h-44 w-full bg-slate-900/60 rounded-xl p-3 border border-slate-800 overflow-hidden">
                 {/* Danger Zone Threshold Line (<35%) */}
                 <div className="absolute left-8 right-4 bottom-[35%] border-b border-dashed border-red-500/50 flex items-center justify-between text-[9px] font-mono text-red-400 pointer-events-none z-0">
-                  <span>CRITICAL STRUCTURAL FAILURE THRESHOLD (35%)</span>
+                  <span>DANGEROUS DAMAGE LEVEL (35%)</span>
                   <span>COLLAPSE DANGER ZONE</span>
                 </div>
 
@@ -543,7 +543,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-red-500/40 space-y-0.5">
                   <div className="text-[10px] font-mono text-slate-400">+90 DAYS</div>
                   <div className="text-lg font-mono font-black text-red-400">{dynamicHealth.d90}%</div>
-                  <div className="text-[9px] text-red-300 font-bold">Catastrophic Void</div>
+                  <div className="text-[9px] text-red-300 font-bold">Major Void</div>
                 </div>
               </div>
             </div>
@@ -553,7 +553,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5" />
-                  What-If Environmental & Load Stress Testing:
+                  Test Different Conditions:
                 </span>
                 {simulatedRepairApplied && (
                   <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/40">
@@ -614,7 +614,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
                     }`}
                   >
                     <Wrench className="w-3 h-3" />
-                    <span>{simulatedRepairApplied ? 'Reset to Real Telemetry' : 'Simulate Preventive Fix'}</span>
+                    <span>{simulatedRepairApplied ? 'Reset to Real Data Info' : 'Simulate Preventive Fix'}</span>
                   </button>
                 </div>
               </div>
@@ -623,7 +623,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
             {/* AI Diagnostics & Mechanical Stress Factor Breakdown */}
             <div className="space-y-3">
               <div className="text-xs font-mono font-bold text-slate-400 uppercase">
-                MECHANICAL STRESS FACTORS & STRUCTURAL PHYSICS:
+                REASONS FOR DAMAGE:
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -652,7 +652,7 @@ export const PredictiveMaintenancePage: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-900 border border-cyan-500/30 space-y-1.5">
                 <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  PRAHARI NEURAL SYNTHESIS & RECOMMENDED PREVENTIVE INTERVENTION:
+                  AI SUGGESTIONS FOR REPAIR:
                 </div>
                 <p className="text-xs text-slate-200 leading-relaxed">
                   {selectedAsset.aiPredictionSummary}
@@ -706,11 +706,11 @@ export const PredictiveMaintenancePage: React.FC = () => {
             {/* Action Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
               <button
-                onClick={() => navigate('/authority/intelligence-loop')}
+                onClick={() => navigate('/authority/smart system-loop')}
                 className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-mono transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Inspect 12-Stage Intelligence Loop Architecture</span>
+                <span>Inspect 12-Stage Smart System Loop Architecture</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
 

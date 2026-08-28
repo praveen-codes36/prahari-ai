@@ -34,7 +34,7 @@ export const AuthTransition: React.FC<AuthTransitionProps> = ({ role, onComplete
 
   return (
     <div className="fixed inset-0 z-50 bg-[#070b14]/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center select-none">
-      {/* Background Neural Grid */}
+      {/* Background Smart Grid */}
       <div className="absolute inset-0 grid-pattern opacity-30 pointer-events-none" />
       <div className="absolute w-[600px] h-[600px] rounded-full bg-cyan-500/10 blur-[120px] pointer-events-none" />
 

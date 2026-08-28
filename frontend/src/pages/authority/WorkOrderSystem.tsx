@@ -42,7 +42,7 @@ export const WorkOrderSystem: React.FC = () => {
             Work Order Lifecycle & AI Verification
           </h1>
           <p className="text-xs md:text-sm text-slate-300">
-            End-to-end accountability from defect triage to optical AI before/after repair verification and GPS geofence auditing.
+            End-to-end accountability from defect priority check to optical AI before/after repair verification and GPS geofence auditing.
           </p>
         </div>
 

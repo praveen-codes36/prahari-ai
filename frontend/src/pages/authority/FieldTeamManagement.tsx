@@ -187,7 +187,7 @@ export const FieldTeamManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Teams List & Detailed Team Telemetry Panel */}
+      {/* Main Grid: Teams List & Detailed Team Data Info Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 5 Cols: Field Teams List */}
         <div className="lg:col-span-5 space-y-3">
@@ -268,7 +268,7 @@ export const FieldTeamManagement: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Telemetry Row */}
+                  {/* Data Info Row */}
                   <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono pt-2 border-t border-slate-800/80">
                     <div className="bg-slate-900/80 p-1.5 rounded-lg">
                       <span className="text-slate-400 block">VEHICLE</span>
@@ -367,7 +367,7 @@ export const FieldTeamManagement: React.FC = () => {
                   )}
                 </div>
                 <div className="text-sm font-bold text-white">
-                  {selectedTeam.currentTask || 'Standard Highway Patrol & Preventive Triage'}
+                  {selectedTeam.currentTask || 'Standard Highway Patrol & Preventive Priority Check'}
                 </div>
                 <div className="flex items-center justify-between text-xs font-mono text-slate-400 pt-1">
                   <span>
@@ -461,7 +461,7 @@ export const FieldTeamManagement: React.FC = () => {
           </div>
         ) : (
           <div className="lg:col-span-7 bg-[#0e1626] p-12 rounded-2xl border border-slate-800 text-center text-slate-400">
-            Select a field squad to inspect live telemetry.
+            Select a field squad to inspect live data info.
           </div>
         )}
       </div>

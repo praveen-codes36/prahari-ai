@@ -134,14 +134,14 @@ export const ComplaintsManagement: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono uppercase tracking-widest text-[#00daf3] bg-[#00e3fd]/10 px-2 py-0.5 rounded border border-[#00e3fd]/30">
-              CITIZEN COMPLAINTS & DEFECT TRIAGE DESK
+              CITIZEN COMPLAINTS DESK
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-            Complaints Management & Triage
+            Manage Citizen Complaints
           </h1>
           <p className="text-xs md:text-sm text-[#8c90a1]">
-            Audit incoming citizen reports, verify AI defect classifications, and dispatch department work orders.
+            Review citizen reports, check AI analysis, and send repair orders to the right department.
           </p>
         </div>
       </div>
@@ -290,7 +290,7 @@ export const ComplaintsManagement: React.FC = () => {
 
               <div className="bg-[#191f2f] p-4 rounded-xl space-y-3 border border-white/5 text-xs font-mono">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#8c90a1]">AI Model Confidence:</span>
+                  <span className="text-[#8c90a1]">AI Accuracy:</span>
                   <AIConfidenceRing score={selectedReport.aiAnalysis.confidence} size={40} />
                 </div>
                 <div>
@@ -311,7 +311,7 @@ export const ComplaintsManagement: React.FC = () => {
             {/* Quick Status State Switcher */}
             <div className="p-4 bg-[#0d1322] rounded-xl border border-white/5 space-y-2">
               <span className="text-xs font-mono text-[#8c90a1] uppercase font-bold block">
-                Update Operational Status:
+                Change Status:
               </span>
               <div className="flex flex-wrap gap-2">
                 {(['under_review', 'verified', 'assigned', 'in_progress', 'resolved'] as ReportStatus[]).map((st) => (

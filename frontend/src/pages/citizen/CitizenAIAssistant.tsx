@@ -78,7 +78,7 @@ export const CitizenAIAssistant: React.FC = () => {
               </span>
             </h1>
             <p className="text-xs text-[#8c90a1]">
-              Real-time route risk intelligence and hazard avoidance guidance.
+              Real-time route risk smart system and hazard avoidance guidance.
             </p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export const CitizenAIAssistant: React.FC = () => {
             </div>
             <div className="bg-[#191f2f] border border-white/10 rounded-2xl px-4 py-3 text-xs font-mono text-[#00daf3] flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#00daf3] animate-ping" />
-              Scanning spatial telemetry and road health registries...
+              Scanning spatial data info and road health registries...
             </div>
           </div>
         )}

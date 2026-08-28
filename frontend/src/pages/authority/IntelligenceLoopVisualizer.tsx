@@ -37,9 +37,9 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
     },
     {
       num: '02',
-      title: 'Computer Vision Defect Triage',
+      title: 'Computer Vision Defect Priority Check',
       icon: Cpu,
-      entity: 'Prahari Neural Vision Engine',
+      entity: 'Prahari Smart Vision Engine',
       input: 'RGB Frame + Drone LiDAR Depth Scan',
       processing: 'YOLOv10 Pothole Segmentation + Subgrade Volume Calculation',
       output: 'Pothole Depth: 18cm · Void Area: 1.4m² · Severity: Critical',
@@ -51,7 +51,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
       icon: TrendingUp,
       entity: 'Prahari Risk Inference Model',
       input: 'Defect Severity + 48,000 VPD Traffic + 120mm Monsoon Downpour',
-      processing: 'Multi-factor risk weight aggregation & failure velocity model',
+      processing: 'Multi-factor risk weight aggregation & failure speed model',
       output: 'Composite Risk Score: 94/100 · Confidence: 96.2%',
       color: 'from-amber-500 to-orange-400',
     },
@@ -61,7 +61,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
       icon: AlertOctagon,
       entity: 'National Priority Ranker',
       input: 'All city-wide active defects',
-      processing: 'Triage optimization ranking by public safety impact',
+      processing: 'Priority Check optimization ranking by public safety impact',
       output: 'Rank #1 in Municipal Ward · SLA: 6-Hour Repair Window',
       color: 'from-red-600 to-amber-500',
     },
@@ -80,7 +80,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
       title: 'Field Fleet Smart Dispatch',
       icon: FileCheck2,
       entity: 'Maintenance Command Center',
-      input: 'Nearby Fleet GPS Telemetry (Squad Alpha 450m away)',
+      input: 'Nearby Fleet GPS Data Info (Squad Alpha 450m away)',
       processing: 'Matching crew material loadout to defect requirement',
       output: 'Squad Alpha Dispatched with 4x Cold Mix Polymer Bags',
       color: 'from-purple-600 to-blue-500',
@@ -89,7 +89,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
       num: '07',
       title: 'Emergency Green Wave Routing',
       icon: Navigation,
-      entity: 'Traffic Controller AI Preemption',
+      entity: 'Traffic Controller AI Priority Access',
       input: 'Squad Vehicle GPS Track',
       processing: 'Dynamic signal timing synchronization on Corridor B',
       output: '9 Traffic Signals Preempted to Green Wave (6 min saved)',
@@ -139,10 +139,10 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
       num: '12',
       title: 'Predictive Health & Loop Close',
       icon: Layers,
-      entity: 'Predictive Infrastructure Database',
-      input: 'Repaired Corridor Health Telemetry',
+      entity: 'Predictive Road Network Database',
+      input: 'Repaired Corridor Health Data Info',
       processing: 'Road health score updated from 42% → 94%',
-      output: 'Risk Closed · Asset degradation timer reset for 24 months',
+      output: 'Risk Closed · Asset damage timer reset for 24 months',
       color: 'from-blue-600 to-cyan-500',
     },
   ];
@@ -160,7 +160,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            RoadGuard Closed-Loop Intelligence Ecosystem
+            RoadGuard Closed-Loop Smart System Ecosystem
           </h1>
           <p className="text-xs md:text-sm text-slate-300">
             Interactive demonstration of the complete closed-loop lifecycle from citizen detection to AI optical verification.
@@ -245,7 +245,7 @@ export const IntelligenceLoopVisualizer: React.FC = () => {
           </div>
         </div>
 
-        {/* Phase Telemetry Data Flow */}
+        {/* Phase Data Info Data Flow */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
             <div className="text-[10px] font-mono font-bold text-slate-400 uppercase">

@@ -229,7 +229,7 @@ export const EmergencyOperations: React.FC = () => {
             }}
           />
 
-          {/* Map Top Telemetry Strip */}
+          {/* Map Top Data Info Strip */}
           <div className="relative z-10 flex items-center justify-between bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-slate-800 text-[10px] font-mono">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -337,7 +337,7 @@ export const EmergencyOperations: React.FC = () => {
               </span>
             </div>
 
-            {/* Impact Telemetry Chips */}
+            {/* Impact Data Info Chips */}
             <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
               <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
                 <div className="text-[10px] text-slate-400">AFFECTED LANES</div>
@@ -441,7 +441,7 @@ export const EmergencyOperations: React.FC = () => {
                 <div>Incident ID: <strong className="text-white font-mono">{selectedIncident.id}</strong></div>
                 <div>Location: <strong className="text-white">{selectedIncident.location}</strong></div>
                 <div>Target Hospital: <strong className="text-cyan-400">Apollo / AIIMS Trauma Center</strong></div>
-                <div>Signal Preemption: <strong className="text-emerald-400">9 Synchronized Nodes Armed</strong></div>
+                <div>Signal Priority Access: <strong className="text-emerald-400">9 Synchronized Nodes Armed</strong></div>
               </div>
 
               {dispatchSuccess ? (

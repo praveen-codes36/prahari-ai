@@ -110,7 +110,7 @@ export const AuthorityOverview: React.FC = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[10px] font-mono uppercase tracking-widest text-[#00e3fd] bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-500/30">
-              PRAHARI COMMAND CENTER · NHAI & STATE PWD
+              PRAHARI SYSTEM · NHAI & STATE PWD
             </span>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -118,10 +118,10 @@ export const AuthorityOverview: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            National Infrastructure Intelligence & Emergency Command
+            National Road Management & Emergency Center
           </h1>
           <p className="text-xs md:text-sm text-slate-300 max-w-3xl mt-1">
-            Real-time computer vision defect triage, automated P1 repair prioritisation, emergency green corridor preemption, and field fleet telemetry.
+            Real-time road issue tracking, automated repair priority, fast emergency routing, and live team tracking.
           </p>
         </div>
 
@@ -139,14 +139,14 @@ export const AuthorityOverview: React.FC = () => {
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#00e3fd]/15 hover:bg-[#00e3fd]/25 text-[#00e3fd] font-mono text-xs font-semibold border border-[#00e3fd]/30 transition-all shadow-[0_0_15px_rgba(0,227,253,0.15)]"
           >
             <Cpu className="w-4 h-4" />
-            <span>AI Risk Engine</span>
+            <span>AI Risk Check</span>
           </button>
 
           <button
             onClick={() => navigate('/authority/priority')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-[#001738] font-black text-xs shadow-lg transition-all"
           >
-            <span>Triage Priority Queue</span>
+            <span>High Priority Queue</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -160,7 +160,7 @@ export const AuthorityOverview: React.FC = () => {
           className="bg-[#0e1626] p-4 rounded-xl border border-red-500/30 hover:border-red-500/60 transition-all cursor-pointer group shadow-lg"
         >
           <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase">
-            <span>CRITICAL ASSETS</span>
+            <span>MAJOR ISSUES</span>
             <AlertOctagon className="w-3.5 h-3.5 text-red-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-red-400 transition-colors">
@@ -196,7 +196,7 @@ export const AuthorityOverview: React.FC = () => {
           className="bg-[#0e1626] p-4 rounded-xl border border-cyan-500/30 hover:border-cyan-500/60 transition-all cursor-pointer group shadow-lg"
         >
           <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase">
-            <span>PREDICTIVE RISKS</span>
+            <span>FUTURE RISKS</span>
             <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
           </div>
           <div className="text-2xl font-black text-white mt-1 font-mono group-hover:text-cyan-400 transition-colors">
@@ -263,7 +263,7 @@ export const AuthorityOverview: React.FC = () => {
 
       {/* Quick Judge-Winning Closed Loop Stepper Banner */}
       <div
-        onClick={() => navigate('/authority/intelligence-loop')}
+        onClick={() => navigate('/authority/smart system-loop')}
         className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-slate-900 border border-cyan-500/30 hover:border-cyan-500/60 transition-all cursor-pointer shadow-xl flex flex-col md:flex-row items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">
@@ -273,37 +273,37 @@ export const AuthorityOverview: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
-                ROADGUARD CLOSED-LOOP INTELLIGENCE ECOSYSTEM
+                ROADGUARD SMART MANAGEMENT SYSTEM
               </span>
               <span className="text-[9px] font-mono bg-cyan-500/20 text-cyan-300 px-1.5 py-0.2 rounded">
-                LIVE END-TO-END
+                LIVE OVERVIEW
               </span>
             </div>
             <div className="text-[11px] text-slate-300 hidden sm:block">
-              Citizen Report → AI Vision → Risk Matrix → Authority Decision → Field Dispatch → Live Routing → Repair → Optical Verification
+              Citizen Report → AI Check → Risk Score → Authority Review → Team Sent → Routing → Repair → Final Check
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#00e3fd]">
-          <span>Explore Ecosystem Architecture</span>
+          <span>Explore Process Flow</span>
           <ChevronRight className="w-4 h-4" />
         </div>
       </div>
 
-      {/* Main Grid: Incident Trajectory Chart & Urgent Attention Feed */}
+      {/* Main Grid: Incident Trend Chart & Urgent Attention Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Cols: Incident Trajectory Analysis Chart & Response Savings */}
+        {/* Left 7 Cols: Incident Trend Analysis Chart & Response Savings */}
         <div className="lg:col-span-7 bg-[#0e1626] p-5 md:p-6 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between space-y-6">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-[#00e3fd]" />
-                  Incident Trajectory & AI Anomaly Prevention Analysis
+                  Incident Trends & Accident Prevention Analysis
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Defect detection velocity vs potential catastrophic accidents prevented
+                  Issue detection speed vs major accidents prevented
                 </p>
               </div>
 
@@ -378,11 +378,11 @@ export const AuthorityOverview: React.FC = () => {
             <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-400 pt-3">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm bg-slate-700"></span>
-                <span>Normal Anomalies</span>
+                <span>Normal Issues</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span>
-                <span>P1 Critical</span>
+                <span>High Risk (P1)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span>
@@ -395,14 +395,14 @@ export const AuthorityOverview: React.FC = () => {
           <div className="bg-slate-900/90 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-black">
-                Δt
+                ⏱️
               </div>
               <div>
                 <div className="text-xs font-bold text-white">
-                  EMERGENCY DISPATCH LATENCY OPTIMIZATION
+                  EMERGENCY RESPONSE TIME IMPROVEMENT
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Green wave signal preemption + neural route bypass
+                  Smart traffic signals + faster alternative routes
                 </div>
               </div>
             </div>
@@ -431,7 +431,7 @@ export const AuthorityOverview: React.FC = () => {
           </div>
         </div>
 
-        {/* Right 5 Cols: Urgent Attention & P1 Triage Queue */}
+        {/* Right 5 Cols: Urgent Attention & P1 Priority Check Queue */}
         <div className="lg:col-span-5 bg-[#0e1626] p-5 md:p-6 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -441,7 +441,7 @@ export const AuthorityOverview: React.FC = () => {
                   Urgent Attention Feed
                 </h3>
                 <span className="text-xs text-slate-400">
-                  Highest priority risk corridors requiring intervention
+                  Highest priority risk corridors requiring repair
                 </span>
               </div>
               <button

@@ -321,7 +321,7 @@ export const MyReportsPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Photo & AI Telemetry Row */}
+            {/* Photo & AI Data Info Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-xl overflow-hidden h-48 bg-[#0d1322] border border-white/10 relative">
                 <img

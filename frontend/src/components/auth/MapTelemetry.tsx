@@ -61,7 +61,7 @@ export const MapTelemetry: React.FC = () => {
 
   return (
     <div className="relative z-20 grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
-      {/* Rotating Live Telemetry Carousel */}
+      {/* Rotating Live Data Info Carousel */}
       <div
         className={`p-3 rounded-2xl bg-slate-900/90 backdrop-blur-xl border ${currentItem.border} shadow-lg flex items-center justify-between transition-all duration-500`}
       >
@@ -82,7 +82,7 @@ export const MapTelemetry: React.FC = () => {
         <Activity className="w-5 h-5 text-cyan-400/70" />
       </div>
 
-      {/* Emergency Preemption Live Corridor Banner */}
+      {/* Emergency Priority Access Live Corridor Banner */}
       <div className="p-3 rounded-2xl bg-gradient-to-r from-cyan-950/70 to-blue-950/50 backdrop-blur-xl border border-cyan-500/40 shadow-lg flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1.5 mb-0.5">

@@ -176,7 +176,7 @@ function App() {
           <ProtectedRoute>
             <ComingSoon
               title="Live Risk Map"
-              description="The real-time Prahari road intelligence map will be available here."
+              description="The real-time Prahari road smart system map will be available here."
             />
           </ProtectedRoute>
         }

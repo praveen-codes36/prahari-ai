@@ -23,7 +23,7 @@ export const SimulationCenter: React.FC = () => {
   const simulationPhases = [
     {
       phase: 'PHASE 01',
-      title: 'Incident Telemetry & G-Shock Trigger',
+      title: 'Incident Data Info & G-Shock Trigger',
       desc: 'Smart road vibration sensor & dashcam feed detect acute 2.4G vertical deceleration on Andheri Link.',
       time: '0.00s',
       node: 'SENSOR_NODE_44',
@@ -31,7 +31,7 @@ export const SimulationCenter: React.FC = () => {
     },
     {
       phase: 'PHASE 02',
-      title: 'Neural Vision Segmentation & Depth Extraction',
+      title: 'Smart Vision Segmentation & Depth Extraction',
       desc: 'Edge CV-Vision extracts asphalt sub-base fracture geometry. Depth calculated at 16.8cm.',
       time: '+0.42s',
       node: 'EDGE_INFERENCE_V4',
@@ -40,7 +40,7 @@ export const SimulationCenter: React.FC = () => {
     {
       phase: 'PHASE 03',
       title: 'Algorithmic Risk Triaging & Priority Score',
-      desc: 'Assigned Triage Score: 94/100 (P1 Critical). Duplicate spatial match verified against registry.',
+      desc: 'Assigned Priority Check Score: 94/100 (P1 Critical). Duplicate spatial match verified against registry.',
       time: '+0.88s',
       node: 'PRAHARI_TRIAGE_CORE',
       badgeColor: 'text-[#ffa000] bg-[#ffa000]/15 border-[#ffa000]/30',
@@ -56,14 +56,14 @@ export const SimulationCenter: React.FC = () => {
     {
       phase: 'PHASE 05',
       title: 'Trauma Center Preparation Broadcast',
-      desc: 'Apollo Trauma HQ received patient telemetry & estimated transit ETA. Bay 02 armed.',
+      desc: 'Apollo Trauma HQ received patient data info & estimated transit ETA. Bay 02 armed.',
       time: '+1.75s',
       node: 'HEALTHCARE_GATEWAY',
       badgeColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30',
     },
     {
       phase: 'PHASE 06',
-      title: 'Traffic Signal Green Wave Preemption',
+      title: 'Traffic Signal Green Wave Priority Access',
       desc: '9 sequential intersection traffic controllers switched to 90s priority green corridor.',
       time: '+2.10s',
       node: 'SIGNAL_CONTROLLER_GRID',
@@ -113,7 +113,7 @@ export const SimulationCenter: React.FC = () => {
             Incident Response Simulation Center
           </h1>
           <p className="text-xs md:text-sm text-[#8c90a1]">
-            Test end-to-end telemetry triggers, neural triage latencies, and green-corridor signal overrides in a live sandbox.
+            Test end-to-end data info triggers, smart priority check latencies, and green-corridor signal overrides in a live sandbox.
           </p>
         </div>
 
@@ -138,12 +138,12 @@ export const SimulationCenter: React.FC = () => {
         </div>
       </div>
 
-      {/* Telemetry Status Bar */}
+      {/* Data Info Status Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-[#151b2b] p-3.5 rounded-xl border border-white/10 flex items-center gap-3">
           <Cpu className="w-4 h-4 text-[#00daf3]" />
           <div>
-            <span className="text-[10px] font-mono text-[#8c90a1] block">Neural Latency</span>
+            <span className="text-[10px] font-mono text-[#8c90a1] block">Smart Latency</span>
             <strong className="text-xs text-white font-mono">14.2 ms / inference</strong>
           </div>
         </div>
@@ -178,7 +178,7 @@ export const SimulationCenter: React.FC = () => {
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h3 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
             <Radio className="w-4 h-4 text-[#00daf3] animate-pulse" />
-            Execution Pipeline Telemetry Stream
+            Execution Pipeline Data Info Stream
           </h3>
           <span className="text-xs font-mono text-[#00daf3]">
             Step {activeStep} of {simulationPhases.length}

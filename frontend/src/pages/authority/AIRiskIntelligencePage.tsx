@@ -50,7 +50,7 @@ export const AIRiskIntelligencePage: React.FC = () => {
         { label: 'Pavement Structural Shear', weight: '+32 pts', score: 94, desc: 'Deep synthetic laser contour shows void under 30cm sub-base' },
         { label: 'Heavy Axle Repetitions', weight: '+24 pts', score: 88, desc: '38,000 multi-axle freight vehicles/day accelerating deformation' },
         { label: 'Hydraulic Water Ingress', weight: '+18 pts', score: 82, desc: 'Subgrade moisture migration from nearby drainage leakage' },
-        { label: 'Citizen Incident Triage', weight: '+12 pts', score: 76, desc: '17 independent reports verified with optical similarity match' },
+        { label: 'Citizen Incident Priority Check', weight: '+12 pts', score: 76, desc: '17 independent reports verified with optical similarity match' },
         { label: 'Prior Patch Failure', weight: '+8 pts', score: 70, desc: 'Recurrent defect at coordinates (28.5355, 77.0866)' },
       ],
     },
@@ -116,10 +116,10 @@ export const AIRiskIntelligencePage: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            AI Risk Intelligence & Explainability Core
+            AI Risk Smart System & Explainability Core
           </h1>
           <p className="text-xs md:text-sm text-slate-300">
-            Multi-modal explainable AI correlating Computer Vision telemetry, heavy freight loads, monsoon forecasts, and citizen reports.
+            Multi-modal explainable AI correlating Computer Vision data info, heavy freight loads, monsoon forecasts, and citizen reports.
           </p>
         </div>
 
@@ -138,9 +138,9 @@ export const AIRiskIntelligencePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Asset Risk Trajectory & Explainability WHY panel */}
+      {/* Main Grid: Asset Risk Trend & Explainability WHY panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 5 Cols: Risk Score & Predictive Trajectory */}
+        {/* Left 5 Cols: Risk Score & Predictive Trend */}
         <div className="lg:col-span-5 bg-[#0e1626] p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6 flex flex-col justify-between">
           <div className="space-y-5">
             <div className="border-b border-slate-800 pb-4">
@@ -149,7 +149,7 @@ export const AIRiskIntelligencePage: React.FC = () => {
               <div className="text-xs text-slate-400">{current.district}, {current.city}</div>
             </div>
 
-            {/* Current vs Predicted Trajectory Cards */}
+            {/* Current vs Predicted Trend Cards */}
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
                 <div className="text-[10px] font-mono text-slate-400">CURRENT RISK</div>
@@ -184,7 +184,7 @@ export const AIRiskIntelligencePage: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white">AI PREDICTIVE CONFIDENCE</div>
-                  <div className="text-[10px] font-mono text-slate-400">Trained on 4.2M Km Indian Road Telemetry</div>
+                  <div className="text-[10px] font-mono text-slate-400">Trained on 4.2M Km Indian Road Data Info</div>
                 </div>
               </div>
               <div className="text-xl font-mono font-black text-[#00e3fd]">

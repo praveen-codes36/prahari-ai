@@ -72,7 +72,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Right Live Satellite Telemetry */}
+        {/* Top Right Live Satellite Data Info */}
         <div className="flex items-center gap-2 sm:gap-4 text-[10px] font-mono">
           <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-slate-300">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -88,7 +88,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Two-Column Viewport: Left Map (Hero) + Right Login Panel */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 flex flex-col lg:flex-row items-stretch gap-6 lg:gap-8 justify-center">
-        {/* Left Column: Hero India Infrastructure Animated Map (58%) */}
+        {/* Left Column: Hero India Road Network Animated Map (58%) */}
         <div className="w-full lg:w-[58%] flex flex-col">
           <div className="flex-1 flex flex-col">
             <InfrastructureMap />
@@ -118,7 +118,7 @@ export const LoginPage: React.FC = () => {
               </h1>
 
               <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                Authenticate your departmental credentials to access real-time infrastructure intelligence, emergency routes & automated triage.
+                Authenticate your departmental credentials to access real-time road network smart system, emergency routes & automated priority check.
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
               onSuccess={handleAuthSuccess}
             />
 
-            {/* Security Notice & Operational Telemetry Footer */}
+            {/* Security Notice & Operational Data Info Footer */}
             <SystemStatus />
           </div>
         </div>

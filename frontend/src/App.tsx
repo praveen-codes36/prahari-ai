@@ -81,7 +81,7 @@ export function App() {
             <Route path="work-orders" element={<WorkOrderSystem />} />
             <Route path="field-app" element={<FieldWorkerMobileApp />} />
             <Route path="predictive" element={<PredictiveMaintenancePage />} />
-            <Route path="intelligence-loop" element={<IntelligenceLoopVisualizer />} />
+            <Route path="smart system-loop" element={<IntelligenceLoopVisualizer />} />
           </Route>
 
           {/* Citizen Perspective Routes */}

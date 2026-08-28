@@ -33,7 +33,7 @@ export const ReportDefectFlow: React.FC = () => {
   const [scanProgress, setScanProgress] = useState<ScanStage>({
     stage: 'START',
     progress: 0,
-    message: 'Initializing neural model...',
+    message: 'Initializing smart model...',
   });
   const [aiAnalysis, setAiAnalysis] = useState<(AIDefectAnalysis & { reportId?: string }) | null>(null);
   const [address, setAddress] = useState(preselectedRoad);
@@ -170,7 +170,7 @@ export const ReportDefectFlow: React.FC = () => {
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold text-white">Report Road Hazard</h1>
             <p className="text-xs md:text-sm text-[#8c90a1]">
-              Capture a clear photo of the pothole, subsidence, or road damage for instant AI triage.
+              Capture a clear photo of the pothole, subsidence, or road damage for instant AI priority check.
             </p>
           </div>
 
@@ -242,7 +242,7 @@ export const ReportDefectFlow: React.FC = () => {
             <div className="absolute inset-0 grid-pattern opacity-40" />
             <div className="absolute inset-x-0 h-1 bg-[#00e3fd] shadow-[0_0_15px_#00e3fd] animate-pulse top-1/2 -translate-y-1/2" />
 
-            {/* Neural Bounding Box Target */}
+            {/* Smart Bounding Box Target */}
             <div className="absolute top-1/4 left-1/4 right-1/4 bottom-1/4 border-2 border-[#00e3fd] rounded-lg shadow-[0_0_20px_rgba(0,227,253,0.5)] flex flex-col justify-between p-2">
               <div className="flex justify-between text-[10px] font-mono text-[#00e3fd]">
                 <span>[DETECT_ZONE_01]</span>
@@ -307,12 +307,12 @@ export const ReportDefectFlow: React.FC = () => {
                 </div>
               </div>
 
-              {/* Triage Overview Column */}
+              {/* Priority Check Overview Column */}
               <div className="flex-1 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-[#00daf3] bg-[#00e3fd]/10 px-2 py-0.5 rounded border border-[#00e3fd]/30">
-                      AI Triage Summary
+                      AI Priority Check Summary
                     </span>
                     <h2 className="text-xl md:text-2xl font-bold text-white mt-1">
                       {aiAnalysis.defectName}
@@ -356,7 +356,7 @@ export const ReportDefectFlow: React.FC = () => {
             <div className="mt-6 pt-5 border-t border-white/10 space-y-3">
               <h4 className="text-xs font-mono uppercase text-[#8c90a1] tracking-wider flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-[#00daf3]" />
-                Neural Vision Reasoning Telemetry
+                Smart Vision Reasoning Data Info
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -478,7 +478,7 @@ export const ReportDefectFlow: React.FC = () => {
               onClick={() => setStep('analysis')}
               className="px-4 py-2.5 rounded-xl bg-[#191f2f] text-xs font-mono text-[#8c90a1] hover:text-white"
             >
-              Back to AI Triage
+              Back to AI Priority Check
             </button>
             <button
               onClick={handleFinalSubmit}
@@ -504,7 +504,7 @@ export const ReportDefectFlow: React.FC = () => {
             </span>
             <h1 className="text-2xl md:text-3xl font-bold text-white">Report Successfully Logged</h1>
             <p className="text-xs md:text-sm text-[#8c90a1] max-w-md mx-auto">
-              Your defect report has been verified by the Prahari Neural Engine and assigned to the Municipal PWD Quick Response Desk.
+              Your defect report has been verified by the Prahari Smart Engine and assigned to the Municipal PWD Quick Response Desk.
             </p>
           </div>
 
@@ -520,7 +520,7 @@ export const ReportDefectFlow: React.FC = () => {
               <span className="text-[#00daf3] font-bold">BMC Suburban PWD</span>
             </div>
             <div className="flex justify-between items-center text-xs font-mono">
-              <span className="text-[#8c90a1]">Priority Triage:</span>
+              <span className="text-[#8c90a1]">Priority Priority Check:</span>
               <span className="text-[#ffb4ab] font-bold">P1 CRITICAL</span>
             </div>
           </div>

@@ -141,7 +141,7 @@ export const CitizenHome: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20 pt-2">
-      {/* Top Welcome & Telemetry Card */}
+      {/* Top Welcome & Data Info Card */}
       <div className="bg-gradient-to-r from-[#151b2b] via-[#191f2f] to-[#151b2b] p-5 md:p-6 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#0066ff]/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -149,7 +149,7 @@ export const CitizenHome: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[11px] font-mono uppercase tracking-widest text-[#00daf3] bg-[#00e3fd]/10 px-2 py-0.5 rounded border border-[#00e3fd]/20">
-                Prahari Citizen Guard
+                Prahari Citizen App
               </span>
               <span className="text-[11px] font-mono text-[#8c90a1]">GPS Active: Mumbai</span>
             </div>
@@ -207,7 +207,7 @@ export const CitizenHome: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white group-hover:text-[#00daf3] transition-colors">
-                  Nearby Road Risk Radar
+                  Nearby Road Risks
                 </h3>
                 <span className="text-[10px] font-mono text-[#8c90a1]">Within 3.5 km radius</span>
               </div>
@@ -218,11 +218,11 @@ export const CitizenHome: React.FC = () => {
           <div className="grid grid-cols-3 gap-2 my-3 text-center">
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
               <div className="text-base font-bold text-[#ffb4ab]">{criticalIssuesCount}</div>
-              <div className="text-[9px] font-mono text-[#8c90a1]">Critical Issues</div>
+              <div className="text-[9px] font-mono text-[#8c90a1]">Major Issues</div>
             </div>
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5">
               <div className="text-base font-bold text-[#ffa000]">{darkZonesCount}</div>
-              <div className="text-[9px] font-mono text-[#8c90a1]">Dark Zones</div>
+              <div className="text-[9px] font-mono text-[#8c90a1]">No Streetlights</div>
             </div>
             <div className="p-2 rounded-lg bg-[#0d1322]/80 border border-white/5 relative overflow-hidden">
               <div className={`text-base font-bold ${activeAlertsCount > 0 ? 'text-[#ff5252] animate-pulse' : 'text-[#00daf3]'}`}>
@@ -251,9 +251,9 @@ export const CitizenHome: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white group-hover:text-[#00daf3] transition-colors">
-                  AI Commute Advisor
+                  Smart Travel Guide
                 </h3>
-                <span className="text-[10px] font-mono text-[#8c90a1]">Monsoon Hazard Predictor</span>
+                <span className="text-[10px] font-mono text-[#8c90a1]">Rain Hazard Alert</span>
               </div>
             </div>
             <ArrowUpRight className="w-4 h-4 text-[#8c90a1] group-hover:text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -264,7 +264,7 @@ export const CitizenHome: React.FC = () => {
           </p>
 
           <div className="flex items-center justify-between text-xs font-mono text-[#b3c5ff] mt-2">
-            <span>Ask AI Copilot for route advice</span>
+            <span>Ask Smart Assistant for travel advice</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </div>
@@ -330,10 +330,9 @@ export const CitizenHome: React.FC = () => {
                     <span>{report.location.address}, {report.location.city}</span>
                   </div>
 
-                  {/* AI Telemetry Tag */}
                   <div className="bg-[#0d1322]/80 rounded-lg px-3 py-1.5 border border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="text-[11px] font-mono text-[#c2c6d8]">
-                      AI Conf: <strong className="text-[#00daf3]">{report.aiAnalysis.confidence}%</strong> · Route: <strong className="text-white">{report.aiAnalysis.departmentRouting}</strong>
+                      AI Match: <strong className="text-[#00daf3]">{report.aiAnalysis.confidence}%</strong> · Dept: <strong className="text-white">{report.aiAnalysis.departmentRouting}</strong>
                     </span>
                     <button
                       onClick={(e) => handleUpvote(report.id, e)}

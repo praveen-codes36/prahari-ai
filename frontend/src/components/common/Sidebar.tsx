@@ -36,9 +36,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
       label: 'AUTHORITY CORE',
       items: [
         { name: 'Overview', path: '/authority', icon: LayoutDashboard, exact: true, badge: null },
-        { name: 'AI Risk Intelligence', path: '/authority/risk-intel', icon: Cpu, badge: 'SURGE' },
+        { name: 'AI Risk Smart System', path: '/authority/risk-intel', icon: Cpu, badge: 'SURGE' },
         { name: 'AI Repair Priority', path: '/authority/priority', icon: AlertOctagon, badge: 'P1 (07)' },
-        { name: 'Complaints Triage', path: '/authority/complaints', icon: ClipboardList, badge: '14 New' },
+        { name: 'Complaints Priority Check', path: '/authority/complaints', icon: ClipboardList, badge: '14 New' },
         { name: 'Road Health Analytics', path: '/authority/road-health', icon: Activity, badge: null },
         { name: 'AI Copilot Assistant', path: '/authority/copilot', icon: Bot, badge: 'ONLINE' },
       ],
@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
       label: 'INTELLIGENCE',
       items: [
         { name: 'Predictive Maintenance', path: '/authority/predictive', icon: TrendingUp, badge: '90d Curve' },
-        { name: 'RoadGuard Intelligence Loop', path: '/authority/intelligence-loop', icon: Sparkles, badge: 'ECOSYSTEM' },
+        { name: 'RoadGuard Smart System Loop', path: '/authority/smart system-loop', icon: Sparkles, badge: 'ECOSYSTEM' },
       ],
     },
   ];

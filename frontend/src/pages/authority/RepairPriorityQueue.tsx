@@ -166,7 +166,7 @@ export const RepairPriorityQueue: React.FC = () => {
                 <SeverityBadge severity={selectedItem.severityLevel} size="md" />
               </div>
               <div className="absolute bottom-3 inset-x-3 bg-[#0d1322]/85 backdrop-blur-md p-2.5 rounded-xl border border-white/10 flex items-center justify-between text-xs font-mono">
-                <span className="text-[#8c90a1]">Anomalies: <strong className="text-white">{selectedItem.anomaliesDetected}</strong></span>
+                <span className="text-[#8c90a1]">Issues: <strong className="text-white">{selectedItem.anomaliesDetected}</strong></span>
                 <span className="text-[#ffb4ab] font-bold">{selectedItem.anomalyDelta}</span>
               </div>
             </div>
@@ -198,7 +198,7 @@ export const RepairPriorityQueue: React.FC = () => {
                 </p>
               </div>
 
-              {/* Triage Score & AI Confidence Gauges */}
+              {/* Priority Check Score & AI Confidence Gauges */}
               <div className="flex items-center gap-4 bg-[#191f2f] p-3 rounded-2xl border border-white/10">
                 <div className="text-right">
                   <span className="text-[10px] font-mono text-[#8c90a1] block">TRIAGE SCORE</span>
@@ -219,7 +219,7 @@ export const RepairPriorityQueue: React.FC = () => {
                   <Sparkles className="w-3.5 h-3.5 text-[#00daf3]" />
                   AI Algorithmic Reasoning Matrix
                 </span>
-                <span>Neural Weighting Engine</span>
+                <span>Smart Weighting Engine</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -310,7 +310,7 @@ export const RepairPriorityQueue: React.FC = () => {
       <div className="space-y-3">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
           <Layers className="w-4 h-4 text-[#00daf3]" />
-          Subsequent Prioritized Infrastructure Targets
+          Subsequent Prioritized Road Network Targets
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -344,7 +344,7 @@ export const RepairPriorityQueue: React.FC = () => {
 
                 <div className="flex items-center justify-between text-[10px] font-mono text-[#8c90a1] pt-2 border-t border-white/5">
                   <span>{item.city}</span>
-                  <span className="text-white">{item.anomaliesDetected} Anomalies</span>
+                  <span className="text-white">{item.anomaliesDetected} Issues</span>
                 </div>
               </div>
             );
