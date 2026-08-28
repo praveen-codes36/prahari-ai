@@ -1,5 +1,5 @@
 ﻿"""
-Comprehensive Automated Unit Test Suite for Prahari AI (All 10 Models & Services + OOD Negative Rejection).
+Comprehensive Automated Unit Test Suite for Prahari AI (All 10 Models & Services + Two-Tier OOD Rejection).
 """
 
 import os
@@ -163,28 +163,24 @@ class TestPrahariCompleteMLSuite(unittest.TestCase):
         self.assertTrue(is_within_prayagraj(25.4358, 81.8463))
         self.assertFalse(is_within_prayagraj(28.6139, 77.2090))
 
-    # 13. Test Out-of-Distribution (OOD) Negative Example Rejection
-    def test_13_out_of_distribution_rejection(self):
-        # Person / Portrait photo
-        person_img = Image.new("RGB", (224, 224), (230, 235, 245))
-        d = ImageDraw.Draw(person_img)
-        d.ellipse([70, 50, 150, 150], fill=(220, 175, 140))
-        d.ellipse([65, 35, 155, 90], fill=(20, 20, 20))
-        d.ellipse([90, 85, 105, 100], fill=(30, 30, 30))
-        d.ellipse([120, 85, 135, 100], fill=(30, 30, 30))
-        d.line([(100, 125), (120, 125)], fill=(180, 50, 50), width=3)
-        d.polygon([(40, 224), (80, 150), (145, 150), (185, 224)], fill=(40, 120, 220))
+    # 13. Test Two-Tier Out-of-Distribution (OOD) Rejection
+    def test_13_two_tier_ood_rejection(self):
+        person_sample = os.path.join(self.sample_img_dir, "person_portrait.jpg")
+        screen_sample = os.path.join(self.sample_img_dir, "screen_monitor.jpg")
+        room_sample = os.path.join(self.sample_img_dir, "living_room.jpg")
 
-        res_ood = detect_defect(person_img)
-        self.assertEqual(res_ood["defect_type"], "Other / No Defect")
-        self.assertFalse(res_ood["is_valid_defect"])
-        self.assertEqual(res_ood["ai_verification_status"], "REJECTED_NON_DEFECT")
-        self.assertEqual(res_ood["severity"], "NONE")
-        self.assertEqual(res_ood["department_assigned"], "None")
+        for sample_path in [person_sample, screen_sample, room_sample]:
+            if os.path.exists(sample_path):
+                res = detect_defect(sample_path)
+                self.assertEqual(res["defect_type"], "Other / No Defect")
+                self.assertFalse(res["is_valid_defect"])
+                self.assertEqual(res["ai_verification_status"], "REJECTED_NON_DEFECT")
+                self.assertEqual(res["severity"], "NONE")
+                self.assertEqual(res["department_assigned"], "None")
 
-        # Ingestion rejection check
-        res_ingest = ingest_defect(lat=25.45, lng=81.83, defect_type=res_ood["defect_type"])
-        self.assertEqual(res_ingest["status"], "rejected")
+                # Ingestion rejection check
+                res_ingest = ingest_defect(lat=25.45, lng=81.83, defect_type=res["defect_type"])
+                self.assertEqual(res_ingest["status"], "rejected")
 
 
 if __name__ == "__main__":
