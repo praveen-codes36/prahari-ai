@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { User } from "../models/User.model.js";
 import { Department } from "../models/Department.model.js";
+import { RegistrationOtp } from "../models/RegistrationOtp.model.js";
 
 
 const sendEmailHelper = async (to, subject, text) => {
@@ -25,30 +27,208 @@ const sendEmailHelper = async (to, subject, text) => {
     }
 };
 
+const VALID_REGISTER_ROLES = ['CITIZEN', 'AUTHORITY', 'EMERGENCY', 'ADMIN'];
+
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+
+const isStrongPassword = (password) => {
+    const value = String(password || '');
+    return value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+};
+
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+const validateDepartmentId = async (department_id) => {
+    if (!department_id) {
+        return null;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(department_id)) {
+        throw new Error("Invalid department_id");
+    }
+
+    const department = await Department.findById(department_id);
+    if (!department) {
+        throw new Error("Department not found");
+    }
+
+    return department._id;
+};
+
+export const requestRegistrationOtp = async (req, res) => {
+    try {
+        const { name, email, password, role, department_id } = req.body;
+
+        if (!name || !email || !password || !role) {
+            return res.status(400).json({ message: "name, email, password and role are required" });
+        }
+
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ message: "Invalid email address" });
+        }
+
+        if (!VALID_REGISTER_ROLES.includes(role)) {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        let normalizedDepartmentId = null;
+        try {
+            normalizedDepartmentId = await validateDepartmentId(department_id || null);
+        } catch (error) {
+            return res.status(400).json({ message: error.message });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(password, salt);
+        const otp = generateOtp();
+        const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+        await RegistrationOtp.findOneAndUpdate(
+            { email: normalizedEmail },
+            {
+                name: String(name).trim(),
+                email: normalizedEmail,
+                password_hash,
+                role,
+                department_id: normalizedDepartmentId,
+                otp,
+                otp_expiry,
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        await sendEmailHelper(
+            normalizedEmail,
+            "Prahari-AI Registration OTP",
+            `Your registration OTP is: ${otp}. It is valid for 10 minutes.`
+        );
+
+        return res.status(200).json({
+            message: "OTP sent to your email",
+            expiresInMinutes: 10,
+        });
+    } catch (error) {
+        return res.status(500).json({ message: "Error generating registration OTP", error: error.message });
+    }
+};
+
+export const verifyRegistrationOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: "email and otp are required" });
+        }
+
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const pending = await RegistrationOtp.findOne({ email: normalizedEmail });
+
+        if (!pending) {
+            return res.status(404).json({ message: "No pending registration found. Please request a new OTP." });
+        }
+
+        if (pending.otp_expiry < Date.now()) {
+            await RegistrationOtp.deleteOne({ email: normalizedEmail });
+            return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+        }
+
+        if (pending.otp !== String(otp).trim()) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            await RegistrationOtp.deleteOne({ email: normalizedEmail });
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        const newUser = new User({
+            name: pending.name,
+            email: pending.email,
+            password_hash: pending.password_hash,
+            role: pending.role,
+            department_id: pending.department_id || null,
+        });
+
+        await newUser.save();
+        await RegistrationOtp.deleteOne({ email: normalizedEmail });
+
+        await sendEmailHelper(
+            normalizedEmail,
+            "Welcome to Prahari-AI!",
+            `Hello ${pending.name},\n\nYour account has been successfully created. Welcome aboard!`
+        );
+
+        return res.status(201).json({
+            message: "OTP verified and account created successfully",
+            user: {
+                id: newUser._id,
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                department_id: newUser.department_id,
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({ message: "Error verifying registration OTP", error: error.message });
+    }
+};
+
 export const registerUser = async (req, res) => {
     try {
         const { name, email, password, role, department_id } = req.body;
 
-        const existingUser = await User.findOne({ email });
+        if (!name || !email || !password || !role) {
+            return res.status(400).json({ message: "name, email, password and role are required" });
+        }
+
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ message: "Invalid email address" });
+        }
+
+        if (!VALID_REGISTER_ROLES.includes(role)) {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+        if (!isStrongPassword(password)) {
+            return res.status(400).json({ message: "Password must be at least 8 characters and include uppercase, lowercase, number and special character" });
+        }
+
+        const normalizedEmail = String(email).trim().toLowerCase();
+
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return res.status(400).json({ message: "User already exists" });
+        }
+
+        let normalizedDepartmentId = null;
+        try {
+            normalizedDepartmentId = await validateDepartmentId(department_id || null);
+        } catch (error) {
+            return res.status(400).json({ message: error.message });
         }
 
         const salt = await bcrypt.genSalt(10);
         const password_hash = await bcrypt.hash(password, salt);
 
         const newUser = new User({
-            name,
-            email,
+            name: String(name).trim(),
+            email: normalizedEmail,
             password_hash,
             role,
-            department_id: department_id || null
+            department_id: normalizedDepartmentId
         });
 
         await newUser.save();
 
-        await sendEmailHelper(email, "Welcome to Prahari-AI!",
-            `Hello ${name},\n\nYour account has been successfully created. Welcome aboard!`);
+        await sendEmailHelper(normalizedEmail, "Welcome to Prahari-AI!",
+            `Hello ${String(name).trim()},\n\nYour account has been successfully created. Welcome aboard!`);
 
         res.status(201).json({ message: "User registered successfully!" });
     } catch (error) {

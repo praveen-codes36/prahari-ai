@@ -12,6 +12,9 @@ import {
   ShieldCheck,
   Cpu,
   CheckCircle2,
+  Send,
+  RefreshCw,
+  KeyRound,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 
@@ -24,11 +27,14 @@ interface RegisterFormState {
   confirmPassword: string;
   role: RegisterRole;
   department_id: string;
+  otp: string;
 }
 
 type FormErrors = Partial<Record<keyof RegisterFormState, string>> & {
   general?: string;
 };
+
+type RegistrationStep = 'details' | 'otp';
 
 const ROLE_OPTIONS: { value: RegisterRole; label: string; badge: string }[] = [
   { value: 'AUTHORITY', label: 'AUTHORITY HQ', badge: 'PWD / NHAI' },
@@ -50,12 +56,15 @@ export const RegisterForm: React.FC = () => {
     confirmPassword: '',
     role: 'AUTHORITY',
     department_id: '',
+    otp: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<'idle' | 'registering' | 'success'>('idle');
+  const [loadingStep, setLoadingStep] = useState<'idle' | 'sending-otp' | 'verifying-otp' | 'success'>('idle');
+  const [registrationStep, setRegistrationStep] = useState<RegistrationStep>('details');
+  const [otpSentMessage, setOtpSentMessage] = useState<string | null>(null);
 
   const passwordChecks = useMemo(() => {
     return {
@@ -72,6 +81,12 @@ export const RegisterForm: React.FC = () => {
   const setField = (key: keyof RegisterFormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined, general: undefined }));
+
+    if (key !== 'otp' && registrationStep === 'otp') {
+      setRegistrationStep('details');
+      setForm((prev) => ({ ...prev, otp: '' }));
+      setOtpSentMessage('Details changed. Please request a new verification code.');
+    }
   };
 
   const validateForm = (): FormErrors => {
@@ -111,6 +126,10 @@ export const RegisterForm: React.FC = () => {
       next.department_id = 'Department ID must be a valid 24-character Mongo ObjectId.';
     }
 
+    if (registrationStep === 'otp' && !/^[0-9]{6}$/.test(form.otp.trim())) {
+      next.otp = 'Enter the 6-digit verification code sent to your email.';
+    }
+
     return next;
   };
 
@@ -137,27 +156,57 @@ export const RegisterForm: React.FC = () => {
     return { general: fallback };
   };
 
-  const onSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
+  const sendOtp = async () => {
     const nextErrors = validateForm();
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+    const { otp, ...detailErrors } = nextErrors;
+    if (Object.keys(detailErrors).length > 0) {
+      setErrors(detailErrors);
       return;
     }
 
     setIsLoading(true);
-    setLoadingStep('registering');
+    setLoadingStep('sending-otp');
     setErrors({});
+    setOtpSentMessage(null);
 
     try {
-      await authService.register({
+      const response = await authService.requestRegistrationOtp({
         name: form.name,
         email: form.email,
         password: form.password,
         role: form.role,
         ...(form.department_id.trim() ? { department_id: form.department_id.trim() } : {}),
       });
+
+      setRegistrationStep('otp');
+      setLoadingStep('idle');
+      setIsLoading(false);
+      setOtpSentMessage(response.data?.message || 'Verification code sent to your email.');
+    } catch (error: any) {
+      setIsLoading(false);
+      setLoadingStep('idle');
+      setErrors(mapBackendError(error));
+    }
+  };
+
+  const verifyAndRegister = async () => {
+    const nextErrors = validateForm();
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    if (!/^[0-9]{6}$/.test(form.otp.trim())) {
+      setErrors((prev) => ({ ...prev, otp: 'Enter the 6-digit verification code.' }));
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingStep('verifying-otp');
+    setErrors({});
+
+    try {
+      await authService.verifyRegistrationOtp(form.email, form.otp);
 
       setLoadingStep('success');
       setTimeout(() => {
@@ -176,6 +225,17 @@ export const RegisterForm: React.FC = () => {
     }
   };
 
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (registrationStep === 'details') {
+      await sendOtp();
+      return;
+    }
+
+    await verifyAndRegister();
+  };
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {errors.general && (
@@ -187,6 +247,13 @@ export const RegisterForm: React.FC = () => {
           </div>
         </div>
       )}
+
+      <div className="flex items-center justify-between text-[9px] font-mono uppercase text-slate-400">
+        <span>Step 1: Details</span>
+        <span className={registrationStep === 'otp' ? 'text-emerald-400' : 'text-cyan-400'}>
+          {registrationStep === 'otp' ? 'Step 2: Verify OTP' : 'Awaiting OTP'}
+        </span>
+      </div>
 
       <div className="space-y-1.5">
         <label className="text-[10px] font-mono font-bold tracking-wider text-slate-300 uppercase flex items-center gap-1.5">
@@ -325,6 +392,39 @@ export const RegisterForm: React.FC = () => {
         {errors.confirmPassword && <p className="text-[10px] text-red-300 font-mono">{errors.confirmPassword}</p>}
       </div>
 
+      {registrationStep === 'otp' && (
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-mono font-bold tracking-wider text-slate-300 uppercase flex items-center gap-1.5">
+            <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+            EMAIL VERIFICATION CODE
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={form.otp}
+            onChange={(e) => setField('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="6-digit code"
+            disabled={isLoading}
+            className="w-full bg-[#080d1a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 font-mono tracking-[0.35em] focus:outline-none focus:border-[#00e3fd] focus:ring-1 focus:ring-[#00e3fd]/50 transition-all"
+            required
+          />
+          {errors.otp && <p className="text-[10px] text-red-300 font-mono">{errors.otp}</p>}
+          <div className="flex items-center justify-between gap-2 text-[9px] font-mono text-slate-400">
+            <span>{otpSentMessage || 'Enter the code emailed to you to finish registration.'}</span>
+            <button
+              type="button"
+              onClick={sendOtp}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Resend code
+            </button>
+          </div>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={isLoading}
@@ -343,10 +443,15 @@ export const RegisterForm: React.FC = () => {
               : 'bg-[#090f20] hover:bg-[#0c1630] text-white'
           }`}
         >
-          {loadingStep === 'registering' ? (
+          {loadingStep === 'sending-otp' ? (
+            <>
+              <Send className="w-4 h-4 text-[#00e3fd] animate-pulse" />
+              <span className="tracking-widest text-[#00e3fd]">SENDING VERIFICATION CODE...</span>
+            </>
+          ) : loadingStep === 'verifying-otp' ? (
             <>
               <Cpu className="w-4 h-4 text-[#00e3fd] animate-spin" />
-              <span className="tracking-widest text-[#00e3fd]">CREATING SECURE PROFILE...</span>
+              <span className="tracking-widest text-[#00e3fd]">VERIFYING CODE & CREATING PROFILE...</span>
             </>
           ) : loadingStep === 'success' ? (
             <>
@@ -356,7 +461,7 @@ export const RegisterForm: React.FC = () => {
           ) : (
             <>
               <ShieldCheck className="w-4 h-4 text-[#00e3fd]" />
-              <span className="tracking-wider">REGISTER & CONTINUE</span>
+              <span className="tracking-wider">{registrationStep === 'otp' ? 'VERIFY OTP & CREATE ACCOUNT' : 'SEND VERIFICATION CODE'}</span>
               <ArrowRight className="w-4 h-4 text-[#00e3fd]" />
             </>
           )}
