@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Lock,
   Mail,
@@ -299,6 +300,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ selectedRole, onSuccess })
           </div>
         </div>
       )}
+
+      <div className="pt-2 text-center text-[10px] font-mono text-slate-400">
+        New to Prahari AI?{' '}
+        <Link
+          to="/register"
+          className="text-cyan-400 hover:text-cyan-300 hover:underline font-bold"
+        >
+          Create operator account
+        </Link>
+      </div>
     </form>
   );
 };

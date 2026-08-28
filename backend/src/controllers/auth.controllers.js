@@ -160,14 +160,53 @@ export const resendOTP = async (req, res) => {
     }
 };
 
+export const verifyOTP = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: "email and otp are required" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!user.reset_otp || !user.reset_otp_expiry) {
+            return res.status(400).json({ message: "No active OTP found. Please request a new one." });
+        }
+
+        if (user.reset_otp_expiry < Date.now()) {
+            return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+        }
+
+        if (user.reset_otp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        return res.status(200).json({ message: "OTP verified successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error verifying OTP", error: error.message });
+    }
+};
+
 
 export const resetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
 
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ message: "email, otp and newPassword are required" });
+        }
+
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!user.reset_otp || !user.reset_otp_expiry) {
+            return res.status(400).json({ message: "No active OTP found. Please request a new one." });
         }
 
         if (user.reset_otp !== otp) {
