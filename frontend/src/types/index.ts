@@ -130,7 +130,7 @@ export interface PriorityQueueItem {
     severityIndex: { score: number; text: string };
     locationRisk: { score: number; text: string };
     accidentCorrelation: { score: number; text: string };
-    vulnerabilityIndex: { score: number; text: string };
+    trafficImpact: { score: number; text: string };
   };
   recommendedAction: string;
   allocatedDepartment: string;
