@@ -20,13 +20,16 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { MOCK_EMERGENCY_INCIDENTS, MOCK_FIELD_TEAMS } from '../../data/mockData';
+import { MOCK_FIELD_TEAMS } from '../../data/mockData';
 import { EmergencyIncident } from '../../types';
+import apiClient from '../../services/apiClient';
 
 export const EmergencyOperations: React.FC = () => {
   const navigate = useNavigate();
-  const [incidents, setIncidents] = useState<EmergencyIncident[]>(MOCK_EMERGENCY_INCIDENTS);
-  const [selectedIncident, setSelectedIncident] = useState<EmergencyIncident>(MOCK_EMERGENCY_INCIDENTS[0]);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [dashboardSummary, setDashboardSummary] = useState<any>(null);
+  
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -34,6 +37,63 @@ export const EmergencyOperations: React.FC = () => {
 
   // Animated vehicle positions simulation
   const [vehicleOffsets, setVehicleOffsets] = useState({ emsX: 42, emsY: 58, polX: 55, polY: 48 });
+
+  useEffect(() => {
+    const fetchAccidents = async () => {
+      try {
+        const res = await apiClient.get('/accidents');
+        if (res.data.success) {
+          const rawAccidents = res.data.data;
+          
+          // Map backend Accident model to frontend UI format
+          const formatted = rawAccidents.map((acc: any) => {
+             return {
+                id: acc._id,
+                title: acc.severity === 'CRITICAL' ? 'Major Accident & Substantial Risk' : 'Traffic Incident Detected',
+                location: `Lat: ${acc.location?.coordinates[1]?.toFixed(4)}, Lng: ${acc.location?.coordinates[0]?.toFixed(4)}`, // Ideally reverse geocoded
+                coordinates: { lat: acc.location?.coordinates[1] || 0, lng: acc.location?.coordinates[0] || 0 },
+                detectedTime: new Date(acc.createdAt).toLocaleTimeString(),
+                severity: acc.severity || 'HIGH',
+                status: acc.status === 'REPORTED' ? 'Awaiting Dispatch' : (acc.status === 'RESPONDING' ? 'Dispatched' : acc.status),
+                riskScore: acc.severity === 'CRITICAL' ? 95 : 75,
+                affectedLanes: acc.severity === 'CRITICAL' ? 2 : 1,
+                estimatedTrafficDelayMin: acc.severity === 'CRITICAL' ? 15 : 5,
+                recommendedActions: [
+                  'Secure Affected Zone',
+                  'Dispatch Nearest Unit',
+                  'Activate Emergency Corridor',
+                  'Notify Trauma Center'
+                ],
+             };
+          });
+          
+          setIncidents(formatted);
+          if (formatted.length > 0 && !selectedIncident) {
+            setSelectedIncident(formatted[0]);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch accidents:', e);
+      }
+    };
+    fetchAccidents();
+  }, []);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      if (!selectedIncident) return;
+      try {
+        const res = await apiClient.get(`/emergency/dashboard/${selectedIncident.id}`);
+        if (res.data.success) {
+          setDashboardSummary(res.data.data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch dashboard summary:', e);
+        setDashboardSummary(null);
+      }
+    };
+    fetchDashboard();
+  }, [selectedIncident?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,19 +107,34 @@ export const EmergencyOperations: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleDispatchConfirm = () => {
-    setDispatchSuccess(true);
-    setTimeout(() => {
-      setIncidents((prev) =>
-        prev.map((inc) =>
-          inc.id === selectedIncident.id ? { ...inc, status: 'Dispatched' as const } : inc
-        )
-      );
-      setSelectedIncident((prev) => ({ ...prev, status: 'Dispatched' as const }));
-      setDispatchSuccess(false);
-      setDispatchModalOpen(false);
-    }, 1200);
+  const handleDispatchConfirm = async () => {
+    if (!selectedIncident) return;
+    try {
+      // 1. Post to Emergency Route to mobilize resources
+      await apiClient.post('/emergency/route', { accident_id: selectedIncident.id });
+      
+      // 2. Patch status to RESPONDING
+      await apiClient.patch(`/accidents/${selectedIncident.id}/status`, { status: 'RESPONDING' });
+
+      setDispatchSuccess(true);
+      setTimeout(() => {
+        setIncidents((prev) =>
+          prev.map((inc) =>
+            inc.id === selectedIncident.id ? { ...inc, status: 'Dispatched' } : inc
+          )
+        );
+        setSelectedIncident((prev: any) => ({ ...prev, status: 'Dispatched' }));
+        setDispatchSuccess(false);
+        setDispatchModalOpen(false);
+      }, 1200);
+    } catch (e) {
+      console.error('Failed to dispatch:', e);
+      alert('Dispatch failed. Ensure routing engine is reachable.');
+    }
   };
+
+  const activeIncidentsCount = incidents.length;
+  const criticalIncidentsCount = incidents.filter(i => i.severity === 'CRITICAL' || i.severity === 'HIGH').length;
 
   return (
     <div className="space-y-5 pb-20 pt-1">
@@ -98,41 +173,25 @@ export const EmergencyOperations: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 4 Metrics Bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {/* Top Metrics Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         <div className="bg-[#0e1626] p-4 rounded-xl border border-red-500/30 shadow-lg">
           <div className="text-[10px] font-mono text-slate-400 uppercase">ACTIVE INCIDENTS</div>
           <div className="text-2xl font-black text-white mt-1 font-mono flex items-center gap-2">
-            <span>08</span>
+            <span>{activeIncidentsCount < 10 ? `0${activeIncidentsCount}` : activeIncidentsCount}</span>
             <span className="text-xs font-normal text-red-400 bg-red-950/60 px-1.5 py-0.5 rounded border border-red-500/30">
               Live Feed
             </span>
           </div>
-          <div className="text-[10px] font-mono text-slate-400 mt-1">3 Critical · 5 High priority</div>
-        </div>
-
-        <div className="bg-[#0e1626] p-4 rounded-xl border border-cyan-500/30 shadow-lg">
-          <div className="text-[10px] font-mono text-slate-400 uppercase">EMERGENCY UNITS</div>
-          <div className="text-2xl font-black text-cyan-400 mt-1 font-mono">
-            24
-          </div>
-          <div className="text-[10px] font-mono text-cyan-300 mt-1">12 Ambulances · 8 Police · 4 Heavy Pavers</div>
-        </div>
-
-        <div className="bg-[#0e1626] p-4 rounded-xl border border-purple-500/30 shadow-lg">
-          <div className="text-[10px] font-mono text-slate-400 uppercase">AVG RESPONSE TIME</div>
-          <div className="text-2xl font-black text-purple-400 mt-1 font-mono">
-            12.4 <span className="text-xs font-normal text-slate-400">MIN</span>
-          </div>
-          <div className="text-[10px] font-mono text-emerald-400 mt-1">33.3% faster than standard dispatch</div>
+          <div className="text-[10px] font-mono text-slate-400 mt-1">Live from Network</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-red-500/50 shadow-lg bg-red-950/20">
           <div className="text-[10px] font-mono text-red-400 uppercase font-bold">CRITICAL INCIDENTS</div>
           <div className="text-2xl font-black text-red-400 mt-1 font-mono animate-pulse">
-            03
+            {criticalIncidentsCount < 10 ? `0${criticalIncidentsCount}` : criticalIncidentsCount}
           </div>
-          <div className="text-[10px] font-mono text-red-300 mt-1">Requires immediate lane closure</div>
+          <div className="text-[10px] font-mono text-red-300 mt-1">Requires immediate response</div>
         </div>
       </div>
 
@@ -269,7 +328,7 @@ export const EmergencyOperations: React.FC = () => {
                 </div>
               </div>
               <div className="mt-2 bg-slate-900/95 text-white font-mono text-[9px] px-2 py-1 rounded border border-red-500 shadow-xl whitespace-nowrap">
-                {selectedIncident.id} · {selectedIncident.location.split(',')[0]}
+                {selectedIncident?.id?.substring(0, 8)} · {selectedIncident?.location?.split(',')[0]}
               </div>
             </div>
 
@@ -321,89 +380,90 @@ export const EmergencyOperations: React.FC = () => {
 
         {/* RIGHT COLUMN: INCIDENT COMMAND PANEL (4 Cols) */}
         <div className="lg:col-span-4 bg-[#0e1626] p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4">
-          <div className="space-y-4">
-            <div className="border-b border-slate-800 pb-3 flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-red-400 uppercase">
-                  INCIDENT COMMAND DISPATCH
+          {selectedIncident && (
+            <div className="space-y-4">
+              <div className="border-b border-slate-800 pb-3 flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-red-400 uppercase">
+                    INCIDENT COMMAND DISPATCH
+                  </span>
+                  <h3 className="text-base font-bold text-white mt-0.5">
+                    {selectedIncident.title}
+                  </h3>
+                  <div className="text-xs text-slate-400">{selectedIncident.location}</div>
+                </div>
+                <span className="text-lg font-mono font-black text-red-400 bg-red-950/60 px-2 py-0.5 rounded border border-red-500/40">
+                  {dashboardSummary?.road_risk_level === 'HIGH' ? 95 : (dashboardSummary?.road_risk_level === 'MEDIUM' ? 70 : selectedIncident.riskScore)}/100
                 </span>
-                <h3 className="text-base font-bold text-white mt-0.5">
-                  {selectedIncident.title}
-                </h3>
-                <div className="text-xs text-slate-400">{selectedIncident.location}</div>
               </div>
-              <span className="text-lg font-mono font-black text-red-400 bg-red-950/60 px-2 py-0.5 rounded border border-red-500/40">
-                {selectedIncident.riskScore}/100
-              </span>
-            </div>
 
-            {/* Impact Data Info Chips */}
-            <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <div className="text-[10px] text-slate-400">AFFECTED LANES</div>
-                <div className="text-base font-bold text-red-400 mt-0.5">
-                  {selectedIncident.affectedLanes} Lanes Blocked
+              {/* Impact Data Info Chips */}
+              <div className="grid grid-cols-2 gap-2 text-center text-xs font-mono">
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">TRAFFIC LEVEL</div>
+                  <div className="text-base font-bold text-red-400 mt-0.5">
+                    {dashboardSummary?.traffic_level || 'UNKNOWN'}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">EST. TRAFFIC IMPACT</div>
+                  <div className="text-base font-bold text-amber-400 mt-0.5">
+                    {dashboardSummary?.traffic_level === 'HIGH' ? '+15 min delay' : '+5 min delay'}
+                  </div>
                 </div>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                <div className="text-[10px] text-slate-400">EST. TRAFFIC IMPACT</div>
-                <div className="text-base font-bold text-amber-400 mt-0.5">
-                  +{selectedIncident.estimatedTrafficDelayMin} min delay
+
+              {/* Assigned Emergency Units */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
+                  ASSIGNED RESPONSE UNITS:
+                </span>
+                <div className="space-y-1.5">
+                  {dashboardSummary?.nearest_ambulance ? (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-3.5 h-3.5 text-cyan-400" />
+                        <span className="font-bold text-white">{dashboardSummary.nearest_ambulance.vehicle_number}</span>
+                      </div>
+                      <div className="font-mono text-[11px] text-slate-400">
+                        Dist: <strong className="text-emerald-400">{dashboardSummary.nearest_ambulance.distance_km} km</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-400 text-center">
+                      Searching for available ambulances...
+                    </div>
+                  )}
+                  {dashboardSummary?.nearest_hospital && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Hospital className="w-3.5 h-3.5 text-red-400" />
+                        <span className="font-bold text-white">Hospital: {dashboardSummary.nearest_hospital.name}</span>
+                      </div>
+                      <div className="font-mono text-[11px] text-slate-400">
+                        Dist: <strong className="text-emerald-400">{dashboardSummary.nearest_hospital.distance_km} km</strong>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-
-            {/* Recommended AI Response Plan Checklist */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
-                AI RECOMMENDED RESPONSE PROTOCOL:
-              </span>
-              <div className="space-y-1.5 text-xs text-slate-300">
-                {selectedIncident.recommendedActions.map((action, idx) => (
-                  <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-slate-900/60 border border-slate-800/80">
-                    <span className="text-[10px] font-mono text-cyan-400 font-bold mt-0.5">
-                      0{idx + 1}
-                    </span>
-                    <span>{action}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Assigned Emergency Units */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
-                ASSIGNED RESPONSE UNITS:
-              </span>
-              <div className="space-y-1.5">
-                {selectedIncident.assignedUnits.map((unit) => (
-                  <div key={unit.unitId} className="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Truck className="w-3.5 h-3.5 text-cyan-400" />
-                      <span className="font-bold text-white">{unit.callsign}</span>
-                    </div>
-                    <div className="font-mono text-[11px] text-slate-400">
-                      ETA <strong className="text-emerald-400">{unit.etaMin}m</strong> ({unit.distanceKm}km)
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Action Trigger Buttons */}
           <div className="space-y-2 pt-3 border-t border-slate-800">
             <button
               onClick={() => setDispatchModalOpen(true)}
+              disabled={!selectedIncident || selectedIncident.status === 'Dispatched'}
               className={`w-full py-3 px-4 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all ${
-                selectedIncident.status === 'Dispatched'
-                  ? 'bg-emerald-600 text-white shadow-emerald-500/20'
+                selectedIncident?.status === 'Dispatched'
+                  ? 'bg-emerald-600 text-white shadow-emerald-500/20 opacity-50 cursor-not-allowed'
                   : 'bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white shadow-red-500/20 animate-pulse'
               }`}
             >
               <Radio className="w-4 h-4" />
               <span>
-                {selectedIncident.status === 'Dispatched'
+                {selectedIncident?.status === 'Dispatched'
                   ? '✓ DISPATCH CONFIRMED (LIVE EN ROUTE)'
                   : 'DISPATCH RESPONSE SQUAD & GREEN WAVE'}
               </span>
@@ -438,9 +498,9 @@ export const EmergencyOperations: React.FC = () => {
 
             <div className="space-y-3 text-xs text-slate-300">
               <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                <div>Incident ID: <strong className="text-white font-mono">{selectedIncident.id}</strong></div>
-                <div>Location: <strong className="text-white">{selectedIncident.location}</strong></div>
-                <div>Target Hospital: <strong className="text-cyan-400">Apollo / AIIMS Trauma Center</strong></div>
+                <div>Incident ID: <strong className="text-white font-mono">{selectedIncident?.id}</strong></div>
+                <div>Location: <strong className="text-white">{selectedIncident?.location}</strong></div>
+                <div>Target Hospital: <strong className="text-cyan-400">{dashboardSummary?.nearest_hospital?.name || 'Searching...'}</strong></div>
                 <div>Signal Priority Access: <strong className="text-emerald-400">9 Synchronized Nodes Armed</strong></div>
               </div>
 
@@ -484,8 +544,8 @@ export const EmergencyOperations: React.FC = () => {
           <div className="bg-[#0e1626] border border-slate-700 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-6 animate-in fade-in duration-150 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <span className="text-xs font-mono text-cyan-400">{selectedIncident.id} · OPERATIONAL WORKSPACE</span>
-                <h2 className="text-xl font-bold text-white mt-0.5">{selectedIncident.title}</h2>
+                <span className="text-xs font-mono text-cyan-400">{selectedIncident?.id} · OPERATIONAL WORKSPACE</span>
+                <h2 className="text-xl font-bold text-white mt-0.5">{selectedIncident?.title}</h2>
               </div>
               <button onClick={() => setDetailModalOpen(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
