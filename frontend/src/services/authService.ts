@@ -102,6 +102,33 @@ export const MOCK_USERS: Record<UserRole, AuthUser> = {
 };
 
 export const authService = {
+  async forgotPassword(email: string) {
+    return await apiClient.post('/auth/forgot-password', {
+      email: email.trim().toLowerCase(),
+    });
+  },
+
+  async resendOTP(email: string) {
+    return await apiClient.post('/auth/resend-otp', {
+      email: email.trim().toLowerCase(),
+    });
+  },
+
+  async verifyOTP(email: string, otp: string) {
+    return await apiClient.post('/auth/verify-otp', {
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+    });
+  },
+
+  async resetPassword(email: string, otp: string, newPassword: string) {
+    return await apiClient.post('/auth/reset-password', {
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+      newPassword,
+    });
+  },
+
   async register(payload: {
     name: string;
     email: string;
