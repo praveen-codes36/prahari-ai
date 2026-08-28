@@ -136,6 +136,10 @@ export const PredictiveMaintenancePage: React.FC = () => {
 
   // Calculate dynamic health curve under simulation modifiers
   const dynamicHealth = useMemo(() => {
+    if (!selectedAsset) {
+      return { current: 0, d30: 0, d60: 0, d90: 0, failureProb: 0, windowDays: 0 };
+    }
+
     if (simulatedRepairApplied) {
       return {
         current: 96,
@@ -201,6 +205,23 @@ export const PredictiveMaintenancePage: React.FC = () => {
       navigate('/authority/work-orders');
     }, 1200);
   };
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-cyan-400">
+        <Activity className="w-12 h-12 mb-4 animate-spin" />
+        <h2 className="text-xl font-bold font-mono">LOADING PREDICTIONS...</h2>
+      </div>
+    );
+  }
+
+  if (!selectedAsset) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-slate-400">
+        <AlertTriangle className="w-12 h-12 mb-4 text-amber-500" />
+        <h2 className="text-xl font-bold font-mono">No predictive assets found.</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20 pt-1">
