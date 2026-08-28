@@ -102,6 +102,24 @@ export const MOCK_USERS: Record<UserRole, AuthUser> = {
 };
 
 export const authService = {
+  async register(payload: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'CITIZEN' | 'AUTHORITY' | 'EMERGENCY' | 'ADMIN';
+    department_id?: string;
+  }) {
+    const requestBody = {
+      name: payload.name.trim(),
+      email: payload.email.trim().toLowerCase(),
+      password: payload.password,
+      role: payload.role,
+      ...(payload.department_id ? { department_id: payload.department_id.trim() } : {}),
+    };
+
+    return await apiClient.post('/auth/register', requestBody);
+  },
+
   // Get active stored session
   getSession(): AuthSession | null {
     try {
