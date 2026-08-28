@@ -37,38 +37,42 @@ export const ComplaintsManagement: React.FC = () => {
         if (response.data.success && response.data.data) {
           const rawComplaints = response.data.data;
           
-          // Map backend Complaint to frontend DefectReport
-          const formattedReports: DefectReport[] = rawComplaints.map((item: any) => ({
-            id: item._id,
-            title: item.defect_type,
-            defectType: item.defect_type.toLowerCase(),
-            severity: item.severity?.toLowerCase() || 'medium',
-            status: item.status?.toLowerCase() || 'submitted',
-            location: {
-              lat: item.location?.coordinates?.[1] || 0,
-              lng: item.location?.coordinates?.[0] || 0,
-              address: 'Loading address...', // Will be updated via reverse geocoding if needed
-              city: 'Unknown'
-            },
-            imageUrl: item.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
-            aiAnalysis: {
+          const formattedReports: DefectReport[] = rawComplaints.map((item: any) => {
+            const imgPath = item.photo_url;
+            const absoluteImageUrl = imgPath 
+                ? (imgPath.startsWith('http') ? imgPath : (imgPath.startsWith('/') ? imgPath : `/${imgPath}`))
+                : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80';
+
+            return {
+              id: item._id,
+              title: item.defect_type,
               defectType: item.defect_type.toLowerCase(),
-              defectName: item.defect_type,
-              confidence: item.confidence_score || 85,
               severity: item.severity?.toLowerCase() || 'medium',
-              riskScore: 70,
-              departmentRouting: item.assigned_department_id?.name || 'Unassigned',
-              priorityLevel: 'P2',
-              estimatedDepth: '> 10 cm',
-              estimatedDimensions: '1m x 1m'
-            },
-            reportedAt: item.createdAt || new Date().toISOString(),
-            updatedAt: item.updatedAt || new Date().toISOString(),
-            reportedBy: { name: 'Citizen', isAnonymous: true },
-            timeline: [],
-            commentsCount: 0,
-            upvotes: 0
-          }));
+              status: item.status?.toLowerCase() || 'submitted',
+              location: {
+                lat: item.location?.coordinates?.[1] || 0,
+                lng: item.location?.coordinates?.[0] || 0,
+                address: 'Loading address...', // Will be updated via reverse geocoding if needed
+                city: 'Unknown'
+              },
+              imageUrl: absoluteImageUrl,
+              aiAnalysis: {
+                defectType: item.defect_type.toLowerCase(),
+                defectName: item.defect_type,
+                confidence: item.confidence_score || 85,
+                severity: item.severity?.toLowerCase() || 'medium',
+                riskScore: 0, // Removed hardcoding, falling back to 0
+                departmentRouting: item.assigned_department_id?.name || 'Unassigned',
+                priorityLevel: 'P2',
+              },
+              reportedAt: item.createdAt || new Date().toISOString(),
+              updatedAt: item.updatedAt || new Date().toISOString(),
+              reportedBy: { name: 'Citizen', isAnonymous: true },
+              timeline: [],
+              commentsCount: 0,
+              upvotes: 0
+            };
+          });
           
           setReports(formattedReports);
           
@@ -293,14 +297,18 @@ export const ComplaintsManagement: React.FC = () => {
                   <span className="text-[#8c90a1]">AI Accuracy:</span>
                   <AIConfidenceRing score={selectedReport.aiAnalysis.confidence} size={40} />
                 </div>
-                <div>
-                  <span className="text-[#8c90a1] block">Defect Dimensions:</span>
-                  <span className="text-white font-bold">{selectedReport.aiAnalysis.estimatedDimensions || '1.4m × 0.9m'}</span>
-                </div>
-                <div>
-                  <span className="text-[#8c90a1] block">Estimated Depth:</span>
-                  <span className="text-[#ffb4ab] font-bold">{selectedReport.aiAnalysis.estimatedDepth || '>15 cm'}</span>
-                </div>
+                {selectedReport.aiAnalysis.estimatedDimensions && (
+                  <div>
+                    <span className="text-[#8c90a1] block">Defect Dimensions:</span>
+                    <span className="text-white font-bold">{selectedReport.aiAnalysis.estimatedDimensions}</span>
+                  </div>
+                )}
+                {selectedReport.aiAnalysis.estimatedDepth && (
+                  <div>
+                    <span className="text-[#8c90a1] block">Estimated Depth:</span>
+                    <span className="text-[#ffb4ab] font-bold">{selectedReport.aiAnalysis.estimatedDepth}</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-[#8c90a1] block">Department Allocation:</span>
                   <span className="text-[#00daf3] font-bold">{selectedReport.aiAnalysis.departmentRouting}</span>

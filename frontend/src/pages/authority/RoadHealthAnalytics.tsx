@@ -26,24 +26,39 @@ export const RoadHealthAnalytics: React.FC = () => {
       try {
         const response = await apiClient.get('/roads/health-scores');
         if (response.data.success && response.data.data) {
-          const formatted = response.data.data.map((item: any) => ({
-            id: item._id,
-            name: item.road_name || 'Unknown Road',
-            district: 'Prayagraj', // Should map to DB later if stored
-            city: 'Prayagraj',
-            lengthKm: 1.2,
-            healthScore: item.health_score,
-            riskLevel: item.band === 'RED' ? 'critical' : item.band === 'YELLOW' ? 'medium' : 'low',
-            accidentHistoryCount: item.factors?.accident_history || 0,
-            lightingStatus: 'Adequate',
-            trafficVolume: 'High',
-            vehiclesPerDay: 15000,
-            activeAnomaliesCount: item.factors?.potholes || 0,
-            lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
-            coordinates: { lat: 25.4358, lng: 81.8463 },
-            potholeCount: item.factors?.potholes || 0,
-            floodRisk: 'Low'
-          }));
+          const formatted = response.data.data.map((item: any) => {
+            const trafficVal = item.factors?.traffic || 0;
+            const trafficVolume = trafficVal > 70 ? 'High' : (trafficVal > 30 ? 'Moderate' : 'Low');
+            
+            const lightingVal = item.factors?.lighting || 0;
+            const lightingStatus = lightingVal > 70 ? 'Poor' : (lightingVal > 30 ? 'Adequate' : 'Good');
+
+            const drainageVal = item.factors?.drainage || 0;
+            const floodRisk = drainageVal > 70 ? 'High' : (drainageVal > 30 ? 'Medium' : 'Low');
+
+            // Optionally extract coordinates from road_segment_id if populated, else default to Prayagraj center for now.
+            const coords = item.road_segment_id?.start_coordinates?.coordinates || [81.8463, 25.4358];
+            const city = 'Prayagraj';
+
+            return {
+              id: item._id,
+              name: item.road_name || item.road_segment_id?.road_name || 'Unknown Road',
+              district: city,
+              city: city,
+              lengthKm: item.road_segment_id?.length_km || 1.2, // fallback if missing
+              healthScore: item.health_score,
+              riskLevel: item.health_score < 40 ? 'critical' : (item.health_score < 70 ? 'medium' : 'low'),
+              accidentHistoryCount: item.factors?.accident_history || 0,
+              lightingStatus: lightingStatus,
+              trafficVolume: trafficVolume,
+              vehiclesPerDay: trafficVal * 500, // simple heuristic
+              activeAnomaliesCount: (item.factors?.potholes || 0) + (item.factors?.complaints || 0),
+              lastScanned: new Date(item.last_calculated_at).toLocaleDateString(),
+              coordinates: { lat: coords[1], lng: coords[0] },
+              potholeCount: item.factors?.potholes || 0,
+              floodRisk: floodRisk
+            };
+          });
           setSegments(formatted);
         }
       } catch (error) {
@@ -54,6 +69,8 @@ export const RoadHealthAnalytics: React.FC = () => {
     };
     fetchHealthScores();
   }, []);
+
+  const uniqueCities = ['All', ...Array.from(new Set(segments.map(s => s.city)))];
 
   const filteredSegments = segments.filter((s) =>
     selectedCity === 'All' ? true : s.city === selectedCity
@@ -82,11 +99,11 @@ export const RoadHealthAnalytics: React.FC = () => {
         </div>
 
         {/* City Switcher */}
-        <div className="flex items-center bg-[#151b2b] p-1 rounded-xl border border-white/10">
-          {(['All', 'Mumbai', 'Delhi', 'Bengaluru'] as const).map((city) => (
+        <div className="flex flex-wrap items-center bg-[#151b2b] p-1 rounded-xl border border-white/10">
+          {uniqueCities.map((city) => (
             <button
               key={city}
-              onClick={() => setSelectedCity(city)}
+              onClick={() => setSelectedCity(city as any)}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
                 selectedCity === city
                   ? 'bg-[#0066ff] text-white font-bold'
@@ -100,38 +117,15 @@ export const RoadHealthAnalytics: React.FC = () => {
       </div>
 
       {/* Metric Cards Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-[#151b2b] p-5 rounded-2xl border border-white/10 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-[#151b2b] p-5 rounded-2xl border border-white/10 flex items-center justify-between md:col-span-1">
           <div>
             <span className="text-[10px] font-mono text-[#8c90a1] uppercase block">
               Network Avg Health Score
             </span>
             <span className="text-3xl font-bold text-white font-mono">{avgHealthScore}/100</span>
-            <span className="text-[11px] font-mono text-[#ffa000] block mt-1">
-              -4.2% Damage this Monsoon
-            </span>
           </div>
           <HealthScoreCircle score={avgHealthScore} size={54} />
-        </div>
-
-        <div className="bg-[#151b2b] p-5 rounded-2xl border border-white/10">
-          <span className="text-[10px] font-mono text-[#8c90a1] uppercase block">
-            Monsoon Rainfall Pothole Surge
-          </span>
-          <span className="text-3xl font-bold text-[#ffb4ab] font-mono">+24.0%</span>
-          <span className="text-[11px] font-mono text-[#8c90a1] block mt-1">
-            Predicted over next 48 hours
-          </span>
-        </div>
-
-        <div className="bg-[#151b2b] p-5 rounded-2xl border border-white/10">
-          <span className="text-[10px] font-mono text-[#8c90a1] uppercase block">
-            Active Data Info Sensors
-          </span>
-          <span className="text-3xl font-bold text-[#00daf3] font-mono">142 Live</span>
-          <span className="text-[11px] font-mono text-emerald-400 block mt-1">
-            99.8% Uplink Uptime
-          </span>
         </div>
       </div>
 

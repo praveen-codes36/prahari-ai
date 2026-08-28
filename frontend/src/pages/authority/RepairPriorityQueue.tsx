@@ -54,32 +54,51 @@ export const RepairPriorityQueue: React.FC = () => {
               }
             }
 
+            const severityLevel = item.factors?.severity?.toUpperCase() || 'HIGH';
+            const severityScoreMap: Record<string, number> = { 'CRITICAL': 95, 'HIGH': 80, 'MEDIUM': 50, 'LOW': 25 };
+            const severityScore = severityScoreMap[severityLevel] || 80;
+            
+            const trafficLevel = item.factors?.traffic?.toUpperCase() || 'HIGH';
+            const trafficScoreMap: Record<string, number> = { 'HIGH': 90, 'MEDIUM': 60, 'LOW': 30 };
+            const trafficScore = trafficScoreMap[trafficLevel] || 90;
+            const vehiclesPerDay = trafficLevel === 'HIGH' ? 35000 : (trafficLevel === 'MEDIUM' ? 15000 : 5000);
+
+            const accidentHistory = item.factors?.accident_history || 0;
+            const accidentScore = Math.min(accidentHistory * 20 + 10, 100);
+
+            const priorityScore = Math.round(item.priority_score || 0);
+
+            const imgPath = item.complaint_id?.photo_url;
+            const absoluteImageUrl = imgPath 
+                ? (imgPath.startsWith('http') ? imgPath : (imgPath.startsWith('/') ? imgPath : `/${imgPath}`))
+                : 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80';
+
             return {
               id: item.complaint_id?._id || item._id,
-              rank: index + 1,
+              rank: item.rank || (index + 1),
               roadName: item.road_segment_id?.road_name || item.complaint_id?.defect_type || 'Unknown Location',
               district: address,
               city: 'Prayagraj', // Could be extracted from geo.city
               affectedLengthKm: 0.5,
-              severityLevel: item.factors?.severity?.toLowerCase() || 'high',
-              triageScore: Math.round(item.priority_score),
-              aiConfidence: 94,
-              anomaliesDetected: item.factors?.accident_history || 1,
-              anomalyDelta: '+12% risk',
-              accidentCountLast30Days: item.factors?.accident_history || 0,
-              trafficVolumeText: item.factors?.traffic || 'HIGH',
-              vehiclesPerDay: item.factors?.traffic === 'HIGH' ? 35000 : 15000,
-              imageUrl: item.complaint_id?.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80',
+              severityLevel: severityLevel.toLowerCase(),
+              triageScore: priorityScore,
+              aiConfidence: Math.round((priorityScore + severityScore) / 2), 
+              anomaliesDetected: accidentHistory + (item.factors?.location_risk > 50 ? 1 : 0) || 1,
+              anomalyDelta: item.factors?.location_risk > 70 ? 'High Risk Zone' : 'Standard Priority',
+              accidentCountLast30Days: accidentHistory,
+              trafficVolumeText: trafficLevel,
+              vehiclesPerDay: vehiclesPerDay,
+              imageUrl: absoluteImageUrl,
               reasoning: {
-                severityIndex: { score: 92, text: `Severity: ${item.factors?.severity || 'HIGH'}` },
+                severityIndex: { score: severityScore, text: `Severity: ${severityLevel}` },
                 locationRisk: { score: item.factors?.location_risk || 80, text: `Location risk score: ${item.factors?.location_risk || 80}` },
-                accidentCorrelation: { score: 85, text: `${item.factors?.accident_history || 0} recent accidents recorded.` },
-                vulnerabilityIndex: { score: 70, text: 'High risk of waterlogging.' },
+                accidentCorrelation: { score: accidentScore, text: `${accidentHistory} recent accidents recorded.` },
+                trafficImpact: { score: trafficScore, text: `Traffic Volume: ${trafficLevel} (${vehiclesPerDay.toLocaleString()} veh/day)` },
               },
-              recommendedAction: 'Immediate Deployment Required',
+              recommendedAction: severityLevel === 'CRITICAL' ? 'Immediate Deployment Required' : 'Schedule within 48 hours',
               allocatedDepartment: item.complaint_id?.assigned_department_id?.name || 'PWD',
-              estimatedRepairCost: '₹' + (item.priority_score * 1200 + 15000).toLocaleString('en-IN'),
-              requiredCrew: 'Heavy Paver Squad',
+              estimatedRepairCost: '₹' + (priorityScore * 1200 + 15000).toLocaleString('en-IN'),
+              requiredCrew: severityLevel === 'CRITICAL' ? 'Heavy Paver Squad' : 'Quick Response Unit',
             };
           }));
           setQueueItems(formatted);
@@ -271,19 +290,19 @@ export const RepairPriorityQueue: React.FC = () => {
                   </p>
                 </div>
 
-                {/* 4. Vulnerability Index */}
+                {/* 4. Traffic Impact */}
                 <div className="bg-[#191f2f] p-3.5 rounded-xl border border-white/5 space-y-1.5">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-white font-mono">4. Monsoon Vulnerability</span>
+                    <span className="text-xs font-bold text-white font-mono">4. Traffic Impact</span>
                     <span className="text-xs font-bold text-[#00daf3] font-mono">
-                      {selectedItem.reasoning.vulnerabilityIndex.score}%
+                      {selectedItem.reasoning.trafficImpact.score}%
                     </span>
                   </div>
                   <div className="w-full h-1.5 bg-[#0d1322] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#00daf3]" style={{ width: `${selectedItem.reasoning.vulnerabilityIndex.score}%` }} />
+                    <div className="h-full bg-[#00daf3]" style={{ width: `${selectedItem.reasoning.trafficImpact.score}%` }} />
                   </div>
                   <p className="text-[11px] text-[#c2c6d8] leading-relaxed">
-                    {selectedItem.reasoning.vulnerabilityIndex.text}
+                    {selectedItem.reasoning.trafficImpact.text}
                   </p>
                 </div>
               </div>
