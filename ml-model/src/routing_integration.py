@@ -1,4 +1,4 @@
-﻿"""
+"""
 Model 8: Emergency Intelligent Routing Engine
 Safety-penalized graph search engine (Dijkstra / A*) steering emergency response vehicles.
 Formula:
@@ -118,11 +118,17 @@ class EmergencyRoutingEngine:
                                 start_lng: float,
                                 dest_lat: Optional[float] = None,
                                 dest_lng: Optional[float] = None,
+                                osrm_routes: Optional[List[Dict[str, Any]]] = None,
+                                potholes: Optional[List[Dict[str, Any]]] = None,
+                                blockages: Optional[List[Dict[str, Any]]] = None,
                                 weather: str = "Clear",
                                 time_of_day: str = "Evening Rush") -> Dict[str, Any]:
         """
         Compute safety-aware candidate routes and select the optimal path to destination or nearest hospital.
         """
+        if potholes is None: potholes = []
+        if blockages is None: blockages = []
+        
         # If destination not specified, default to nearest trauma center
         if dest_lat is None or dest_lng is None:
             nearest = self.find_nearest_hospitals(start_lat, start_lng, top_k=1)[0]
@@ -131,58 +137,121 @@ class EmergencyRoutingEngine:
         else:
             target_name = f"Destination [{dest_lat:.4f}, {dest_lng:.4f}]"
 
-        direct_dist = haversine_distance(start_lat, start_lng, dest_lat, dest_lng)
-        road_dist = direct_dist * 1.35  # Urban road network detour factor
+        candidate_routes = []
 
-        # Generate 2 realistic candidate corridor paths:
-        # Route 1: Direct Main Arterial (Fast when clear, but heavily penalized if potholes/accidents present)
-        seg1_direct = [
-            {"name": "Origin Connector", "length_meters": road_dist * 0.3, "risk_score": 0.45, "defect_count": 2, "traffic_level": "High"},
-            {"name": "Main Corridor", "length_meters": road_dist * 0.7, "risk_score": 0.65, "defect_count": 4, "traffic_level": "Congested"}
-        ]
-        profile_direct = evaluate_route_safety_profile(seg1_direct)
+        if osrm_routes and len(osrm_routes) > 0:
+            # We have real routes from OSRM passed by the backend
+            for i, r in enumerate(osrm_routes):
+                dist_m = float(r.get("distance", 0.0))
+                duration_s = float(r.get("duration", 0.0))
+                geom = r.get("geometry", [])
+                
+                # Dynamic spatial intersection calculation
+                risk_score = 0.10 # Base risk
+                defects = 0
+                has_blockage = False
+                
+                for pt in geom:
+                    # Check against blockages (critical penalty)
+                    for b in blockages:
+                        if b and "location" in b:
+                            d = haversine_distance(pt["lat"], pt["lng"], b["location"]["lat"], b["location"]["lng"])
+                            if d < 100: # Within 100 meters of roadblock
+                                has_blockage = True
+                                risk_score += 5.0 # Massive penalty
+                                break
+                    # Check against potholes (moderate penalty)
+                    for p in potholes:
+                        if p and "location" in p:
+                            d = haversine_distance(pt["lat"], pt["lng"], p["location"]["lat"], p["location"]["lng"])
+                            if d < 50: # Within 50 meters of pothole
+                                defects += 1
+                                risk_score += 0.15
+                                
+                risk_score = min(risk_score, 10.0) # Cap risk score
+                traffic = "High" if has_blockage else "Moderate"
+                
+                route_id = "ROUTE-A-DIRECT" if i == 0 else f"ROUTE-B-BYPASS-{i}"
+                label = "Direct Route" if i == 0 else "Alternative Route"
 
-        # Route 2: Safety Bypass Corridor (Slightly longer physical length, but pristine road condition)
-        seg2_bypass = [
-            {"name": "Outer Bypass Link", "length_meters": road_dist * 0.5, "risk_score": 0.15, "defect_count": 0, "traffic_level": "Low"},
-            {"name": "Highway Access Spur", "length_meters": road_dist * 0.65, "risk_score": 0.20, "defect_count": 0, "traffic_level": "Moderate"}
-        ]
-        profile_bypass = evaluate_route_safety_profile(seg2_bypass)
+                # Single segment representation of the whole route for the evaluator
+                seg = [{
+                    "name": "OSRM Full Route", 
+                    "length_meters": dist_m, 
+                    "risk_score": risk_score, 
+                    "defect_count": defects, 
+                    "traffic_level": traffic
+                }]
+                
+                profile = evaluate_route_safety_profile(seg)
+                
+                # Override ETA with OSRM's actual ETA adjusted slightly by risk
+                base_eta_mins = duration_s / 60.0
+                adjusted_eta_mins = base_eta_mins * (1.0 + (risk_score * 0.3) + (defects * 0.05))
 
-        candidate_routes = [
-            {
-                "route_id": "ROUTE-A-DIRECT",
-                "route_label": "Direct Urban Corridor",
-                "physical_distance_m": profile_direct["total_physical_distance_m"],
-                "dynamic_cost_weight": profile_direct["total_dynamic_weight_m"],
-                "pothole_defect_count": profile_direct["total_active_defects_on_path"],
-                "average_risk_score": profile_direct["average_segment_risk"],
-                "traffic_level": "High",
-                "eta_minutes": profile_direct["eta_minutes"],
-                "recommendation": profile_direct["recommendation"],
-                "path_coordinates": [
-                    [round(start_lat, 5), round(start_lng, 5)],
-                    [round((start_lat + dest_lat)/2.0 + 0.002, 5), round((start_lng + dest_lng)/2.0 - 0.002, 5)],
-                    [round(dest_lat, 5), round(dest_lng, 5)]
-                ]
-            },
-            {
-                "route_id": "ROUTE-B-BYPASS",
-                "route_label": "Safety Bypass Corridor (Recommended)",
-                "physical_distance_m": profile_bypass["total_physical_distance_m"],
-                "dynamic_cost_weight": profile_bypass["total_dynamic_weight_m"],
-                "pothole_defect_count": profile_bypass["total_active_defects_on_path"],
-                "average_risk_score": profile_bypass["average_segment_risk"],
-                "traffic_level": "Moderate",
-                "eta_minutes": profile_bypass["eta_minutes"],
-                "recommendation": profile_bypass["recommendation"],
-                "path_coordinates": [
-                    [round(start_lat, 5), round(start_lng, 5)],
-                    [round((start_lat + dest_lat)/2.0 - 0.004, 5), round((start_lng + dest_lng)/2.0 + 0.004, 5)],
-                    [round(dest_lat, 5), round(dest_lng, 5)]
-                ]
-            }
-        ]
+                candidate_routes.append({
+                    "route_id": route_id,
+                    "route_label": label,
+                    "physical_distance_m": profile["total_physical_distance_m"],
+                    "dynamic_cost_weight": profile["total_dynamic_weight_m"],
+                    "pothole_defect_count": profile["total_active_defects_on_path"],
+                    "average_risk_score": profile["average_segment_risk"],
+                    "traffic_level": traffic,
+                    "eta_minutes": round(adjusted_eta_mins, 1),
+                    "recommendation": profile["recommendation"],
+                    "path_coordinates": geom
+                })
+        else:
+            # Fallback mock routing if OSRM is not provided
+            direct_dist = haversine_distance(start_lat, start_lng, dest_lat, dest_lng)
+            road_dist = direct_dist * 1.35  # Urban road network detour factor
+
+            seg1_direct = [
+                {"name": "Origin Connector", "length_meters": road_dist * 0.3, "risk_score": 0.45, "defect_count": 2, "traffic_level": "High"},
+                {"name": "Main Corridor", "length_meters": road_dist * 0.7, "risk_score": 0.65, "defect_count": 4, "traffic_level": "Congested"}
+            ]
+            profile_direct = evaluate_route_safety_profile(seg1_direct)
+
+            seg2_bypass = [
+                {"name": "Outer Bypass Link", "length_meters": road_dist * 0.5, "risk_score": 0.15, "defect_count": 0, "traffic_level": "Low"},
+                {"name": "Highway Access Spur", "length_meters": road_dist * 0.65, "risk_score": 0.20, "defect_count": 0, "traffic_level": "Moderate"}
+            ]
+            profile_bypass = evaluate_route_safety_profile(seg2_bypass)
+
+            candidate_routes = [
+                {
+                    "route_id": "ROUTE-A-DIRECT",
+                    "route_label": "Direct Urban Corridor",
+                    "physical_distance_m": profile_direct["total_physical_distance_m"],
+                    "dynamic_cost_weight": profile_direct["total_dynamic_weight_m"],
+                    "pothole_defect_count": profile_direct["total_active_defects_on_path"],
+                    "average_risk_score": profile_direct["average_segment_risk"],
+                    "traffic_level": "High",
+                    "eta_minutes": profile_direct["eta_minutes"],
+                    "recommendation": profile_direct["recommendation"],
+                    "path_coordinates": [
+                        [round(start_lat, 5), round(start_lng, 5)],
+                        [round((start_lat + dest_lat)/2.0 + 0.002, 5), round((start_lng + dest_lng)/2.0 - 0.002, 5)],
+                        [round(dest_lat, 5), round(dest_lng, 5)]
+                    ]
+                },
+                {
+                    "route_id": "ROUTE-B-BYPASS",
+                    "route_label": "Safety Bypass Corridor (Recommended)",
+                    "physical_distance_m": profile_bypass["total_physical_distance_m"],
+                    "dynamic_cost_weight": profile_bypass["total_dynamic_weight_m"],
+                    "pothole_defect_count": profile_bypass["total_active_defects_on_path"],
+                    "average_risk_score": profile_bypass["average_segment_risk"],
+                    "traffic_level": "Moderate",
+                    "eta_minutes": profile_bypass["eta_minutes"],
+                    "recommendation": profile_bypass["recommendation"],
+                    "path_coordinates": [
+                        [round(start_lat, 5), round(start_lng, 5)],
+                        [round((start_lat + dest_lat)/2.0 - 0.004, 5), round((start_lng + dest_lng)/2.0 + 0.004, 5)],
+                        [round(dest_lat, 5), round(dest_lng, 5)]
+                    ]
+                }
+            ]
 
         # Best route is lowest dynamic_cost_weight
         best_route = min(candidate_routes, key=lambda x: x["dynamic_cost_weight"])

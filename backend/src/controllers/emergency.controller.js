@@ -123,37 +123,86 @@ export const getEmergencyRoute = async (req, res) => {
             risk_zones: riskZones
         };
 
-        // 6. Call the Python FastAPI routing microservice
+        // 6. Call the Python FastAPI routing microservice (for metrics) and OSRM (for real road geometries)
         let routeResult;
+        let osrm_routes = [];
+
+        // Always fetch real road paths using OSRM to avoid straight lines ("flying through the sky")
+        try {
+            const ambLon = nearestAmbulance.current_location.coordinates[0];
+            const ambLat = nearestAmbulance.current_location.coordinates[1];
+            const hospLon = nearestHospital.location.coordinates[0];
+            const hospLat = nearestHospital.location.coordinates[1];
+
+            // OSRM does not return alternatives for 3 waypoints.
+            // So we split it: Ambulance -> Accident (1 route), and Accident -> Hospital (up to 3 routes)
+            const osrmResAmbToAcc = await axios.get(`https://router.project-osrm.org/route/v1/driving/${ambLon},${ambLat};${accLon},${accLat}?overview=full&geometries=geojson`);
+            const osrmResAccToHosp = await axios.get(`https://router.project-osrm.org/route/v1/driving/${accLon},${accLat};${hospLon},${hospLat}?overview=full&geometries=geojson&alternatives=3`);
+            
+            let ambToAccRoute = null;
+            if (osrmResAmbToAcc.data.routes && osrmResAmbToAcc.data.routes.length > 0) {
+                ambToAccRoute = osrmResAmbToAcc.data.routes[0];
+            }
+
+            if (osrmResAccToHosp.data.routes && osrmResAccToHosp.data.routes.length > 0) {
+                osrm_routes = osrmResAccToHosp.data.routes.map(r => {
+                    let totalDistance = r.distance;
+                    let totalDuration = r.duration;
+                    let fullGeometry = r.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0] }));
+
+                    if (ambToAccRoute) {
+                        totalDistance += ambToAccRoute.distance;
+                        totalDuration += ambToAccRoute.duration;
+                        const ambToAccGeom = ambToAccRoute.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0] }));
+                        fullGeometry = [...ambToAccGeom, ...fullGeometry];
+                    }
+
+                    return {
+                        distance: totalDistance,
+                        duration: totalDuration,
+                        geometry: fullGeometry
+                    };
+                });
+            }
+        } catch (osrmError) {
+            console.error("OSRM call failed:", osrmError.message);
+        }
+
+        // Add osrm_routes to payload
+        routingPayload.osrm_routes = osrm_routes;
+
         try {
             const { data } = await axios.post(ROUTING_ENGINE_URL, routingPayload, { timeout: 15000 });
             routeResult = data;
         } catch (microserviceError) {
             console.error("Routing engine call failed:", microserviceError.message);
-            // Straight-line fallback so the emergency dashboard never hard-fails if the
-            // Python service (or its OSM download) is unavailable during a demo.
-            routeResult = {
-                recommended_route_type: "fastest",
-                fastest_route_coords: [
-                    toLatLng(nearestAmbulance.current_location.coordinates),
-                    toLatLng(accidentLocation),
-                    toLatLng(nearestHospital.location.coordinates)
-                ],
-                fastest_route_eta_mins: null,
-                safest_route_coords: [],
-                safest_route_eta_mins: null,
-                safest_route_pothole_count: 0,
-                safest_route_avg_risk: null,
-                fallback: true,
-                message: "Routing engine unreachable — showing straight-line fallback route."
-            };
+            // Graceful fallback purely based on OSRM if ML model fails
+            if (osrm_routes.length > 0) {
+                routeResult = {
+                    recommended_route_type: "fastest",
+                    fastest_route_coords: osrm_routes[0].geometry,
+                    fastest_route_eta_mins: osrm_routes[0].duration / 60,
+                    fastest_route_distance: osrm_routes[0].distance / 1000,
+                    safest_route_coords: osrm_routes.length > 1 ? osrm_routes[1].geometry : osrm_routes[0].geometry,
+                    safest_route_eta_mins: osrm_routes.length > 1 ? osrm_routes[1].duration / 60 : osrm_routes[0].duration / 60,
+                    safest_route_distance: osrm_routes.length > 1 ? osrm_routes[1].distance / 1000 : osrm_routes[0].distance / 1000,
+                    safest_route_pothole_count: 0,
+                    safest_route_avg_risk: 0.5,
+                    fallback: true,
+                    message: "Generated real road routes using OSRM."
+                };
+            } else {
+                throw new ApiError(500, "Both OSRM and ML routing engine failed to generate a route.");
+            }
         }
 
         // 7. Mark the ambulance dispatched now that a route has been issued
-        if (nearestAmbulance.status === "AVAILABLE") {
-            nearestAmbulance.status = "DISPATCHED";
-            await nearestAmbulance.save();
-        }
+        // DEMO FIX: We comment this out because calculating routes shouldn't consume the ambulance
+        // until the dispatcher explicitly clicks 'Dispatch'. Otherwise, reloading the page causes 404.
+        // if (nearestAmbulance.status === "AVAILABLE") {
+        //     nearestAmbulance.status = "DISPATCHED";
+        //     await nearestAmbulance.save();
+        // }
 
         return res.status(200).json(
             new ApiResponse(
@@ -162,7 +211,14 @@ export const getEmergencyRoute = async (req, res) => {
                     ambulance: nearestAmbulance,
                     hospital: nearestHospital,
                     active_blockages_considered: activeBlockages.length,
-                    route: routeResult
+                    route: routeResult,
+                    hazards: {
+                        potholes: defects,
+                        blockages: activeBlockages.map(b => ({
+                            location: toLatLng(extractRepresentativePoint(b.location)),
+                            reason: b.reason
+                        }))
+                    }
                 },
                 "Emergency route calculated successfully"
             )

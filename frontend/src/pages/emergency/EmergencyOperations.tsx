@@ -17,18 +17,87 @@ import {
   Volume2,
   Navigation,
   Sparkles,
-  Layers,
   X,
+  Layers,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, Popup } from 'react-leaflet';
+import L from 'leaflet';
 import { MOCK_FIELD_TEAMS } from '../../data/mockData';
 import { EmergencyIncident } from '../../types';
 import apiClient from '../../services/apiClient';
+
+const MapRecenter = ({ center }: { center: { lat: number, lng: number } }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center.lat && center.lng) {
+      map.setView([center.lat, center.lng], 13);
+    }
+  }, [center, map]);
+  return null;
+};
+
+// Custom Icons
+const createIncidentIcon = () => {
+  return L.divIcon({
+    className: 'custom-map-icon',
+    html: `
+      <div class="relative flex items-center justify-center">
+        <div class="absolute w-12 h-12 rounded-full bg-red-500/30 animate-ping"></div>
+        <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.8)] z-10">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+};
+
+const createAmbulanceIcon = (amb: any) => {
+  return L.divIcon({
+    className: 'custom-map-icon',
+    html: `
+      <div class="relative flex flex-col items-center group">
+        <div class="w-8 h-8 rounded-full bg-cyan-500 border-2 border-white text-[#001738] flex items-center justify-center shadow-[0_0_15px_rgba(0,227,253,0.8)] z-10 transition-transform group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+        </div>
+        <div class="absolute top-9 bg-slate-900/90 text-cyan-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-cyan-500/50 whitespace-nowrap shadow-lg">
+          ${amb?.vehicle_number || 'AMB'}
+        </div>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+};
+
+const createHospitalIcon = (hosp: any) => {
+  return L.divIcon({
+    className: 'custom-map-icon',
+    html: `
+      <div class="relative flex flex-col items-center group">
+        <div class="w-9 h-9 rounded-lg bg-emerald-600 border-2 border-white text-white flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.8)] z-10 transition-transform group-hover:scale-110">
+           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v4"/><path d="M14 14h-4"/><path d="M14 18h-4"/><path d="M14 8h-4"/><path d="M18 12h2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4h2"/><path d="M18 22V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="absolute top-10 bg-slate-900/90 text-emerald-300 font-mono text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/50 whitespace-nowrap shadow-lg">
+          ${hosp?.name?.substring(0,12) || 'HOSPITAL'}
+        </div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
 
 export const EmergencyOperations: React.FC = () => {
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [dashboardSummary, setDashboardSummary] = useState<any>(null);
+  
+  // Added states for multiple map markers
+  const [availableAmbulances, setAvailableAmbulances] = useState<any[]>([]);
+  const [nearbyHospitals, setNearbyHospitals] = useState<any[]>([]);
   
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
@@ -92,7 +161,24 @@ export const EmergencyOperations: React.FC = () => {
         setDashboardSummary(null);
       }
     };
+
+    const fetchMapResources = async () => {
+      if (!selectedIncident) return;
+      try {
+        const [ambRes, hospRes] = await Promise.all([
+          apiClient.get(`/ambulances?longitude=${selectedIncident.coordinates.lng}&latitude=${selectedIncident.coordinates.lat}`).catch(() => ({ data: { data: [] } })),
+          apiClient.get(`/hospitals?longitude=${selectedIncident.coordinates.lng}&latitude=${selectedIncident.coordinates.lat}`).catch(() => ({ data: { data: [] } }))
+        ]);
+        
+        setAvailableAmbulances(ambRes.data?.data || []);
+        setNearbyHospitals(hospRes.data?.data || []);
+      } catch(e) {
+        console.error("Failed to fetch map resources", e);
+      }
+    }
+
     fetchDashboard();
+    fetchMapResources();
   }, [selectedIncident?.id]);
 
   useEffect(() => {
@@ -278,86 +364,91 @@ export const EmergencyOperations: React.FC = () => {
         </div>
 
         {/* CENTER COLUMN: LIVE TACTICAL OPERATIONS MAP (4.5 Cols) */}
-        <div className="lg:col-span-4 bg-[#080d17] p-4 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between relative overflow-hidden min-h-[480px]">
-          {/* Tactical Vector Grid Background */}
-          <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity pointer-events-none"
-            style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=1200&q=80')`,
-            }}
-          />
+        <div className="lg:col-span-4 bg-[#080d17] p-4 rounded-2xl border border-slate-800 shadow-2xl flex flex-col justify-between relative overflow-hidden min-h-[480px] z-0">
+          
+          <MapContainer 
+            center={selectedIncident ? [selectedIncident.coordinates.lat, selectedIncident.coordinates.lng] : [25.4358, 81.8463]} 
+            zoom={13} 
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
+            zoomControl={false}
+          >
+            <TileLayer
+              attribution='&copy; OpenStreetMap'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              className="map-tiles-dark-mode opacity-60"
+            />
+            {selectedIncident && <MapRecenter center={selectedIncident.coordinates} />}
+            
+            {/* Incident Marker */}
+            {selectedIncident && (
+              <Marker 
+                position={[selectedIncident.coordinates.lat, selectedIncident.coordinates.lng]} 
+                icon={createIncidentIcon()} 
+              >
+                <Popup className="custom-popup">
+                  <div className="p-1 min-w-[150px]">
+                    <div className="text-[10px] font-mono text-red-500 font-bold mb-1">INCIDENT {selectedIncident.id.substring(0,6)}</div>
+                    <div className="text-sm font-bold text-slate-800 leading-tight">{selectedIncident.title}</div>
+                    <div className="text-xs text-slate-500 mt-1">{selectedIncident.location}</div>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
-          {/* Map Top Data Info Strip */}
-          <div className="relative z-10 flex items-center justify-between bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-slate-800 text-[10px] font-mono">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-white font-bold">GRID GPS: ACTIVE</span>
-            </div>
-            <div className="text-cyan-400">
-              Corridor B: Green Wave
-            </div>
-            <div className="text-slate-400">
-              Preempt: 9 Signals
-            </div>
-          </div>
+            {/* Render Multiple Available Ambulances */}
+            {availableAmbulances.map(amb => (
+              <Marker 
+                key={amb._id}
+                position={[amb.current_location.coordinates[1], amb.current_location.coordinates[0]]} 
+                icon={createAmbulanceIcon(amb)} 
+              >
+                <Popup className="custom-popup">
+                  <div className="p-1 min-w-[140px]">
+                    <div className="text-[10px] font-mono text-cyan-600 font-bold mb-1">AMBULANCE UNIT</div>
+                    <div className="text-sm font-bold text-slate-800">{amb.vehicle_number}</div>
+                    <div className="text-xs text-emerald-600 font-bold mt-1">Status: Available</div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
 
-          {/* Map Canvas with Animated Vehicles & Incident Pulsing Markers */}
-          <div className="relative z-10 flex-1 my-4 flex items-center justify-center min-h-[300px]">
-            {/* SVG Corridor Vector Lines */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              {/* Green Wave Path */}
-              <path
-                d="M 60 220 Q 180 140 280 90 T 360 40"
-                fill="none"
-                stroke="#00e3fd"
-                strokeWidth="3"
-                strokeDasharray="6,4"
-                className="animate-pulse"
+            {/* Render Multiple Nearby Hospitals */}
+            {nearbyHospitals.map(hosp => (
+              <Marker 
+                key={hosp._id}
+                position={[hosp.location.coordinates[1], hosp.location.coordinates[0]]} 
+                icon={createHospitalIcon(hosp)} 
+              >
+                <Popup className="custom-popup">
+                  <div className="p-1 min-w-[150px]">
+                    <div className="text-[10px] font-mono text-emerald-600 font-bold mb-1">MEDICAL FACILITY</div>
+                    <div className="text-sm font-bold text-slate-800 leading-tight">{hosp.name}</div>
+                    <div className="text-xs text-slate-500 mt-1">Trauma Center Active</div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+            
+            {/* Draw route line to nearest assigned units if available */}
+            {selectedIncident && dashboardSummary?.nearest_ambulance?.coordinates && (
+              <Polyline 
+                positions={[
+                  [dashboardSummary.nearest_ambulance.coordinates[1], dashboardSummary.nearest_ambulance.coordinates[0]],
+                  [selectedIncident.coordinates.lat, selectedIncident.coordinates.lng],
+                ]} 
+                color="#00daf3" weight={3} dashArray="5, 10" 
               />
-              {/* Traffic Congestion Zone */}
-              <circle cx="160" cy="180" r="38" fill="rgba(239, 68, 68, 0.15)" stroke="#ef4444" strokeWidth="1" strokeDasharray="3,3" />
-            </svg>
-
-            {/* Pulsing Active Incident Marker (Center/Target) */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-              <div className="relative">
-                <span className="absolute -inset-3 rounded-full bg-red-500/30 animate-ping"></span>
-                <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs shadow-[0_0_20px_rgba(239,68,68,0.8)] border-2 border-white">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-2 bg-slate-900/95 text-white font-mono text-[9px] px-2 py-1 rounded border border-red-500 shadow-xl whitespace-nowrap">
-                {selectedIncident?.id?.substring(0, 8)} · {selectedIncident?.location?.split(',')[0]}
-              </div>
-            </div>
-
-            {/* Dynamic Moving Vehicle 1: Ambulance EMS-42 */}
-            <div
-              className="absolute transition-all duration-1000 flex flex-col items-center"
-              style={{ top: `${vehicleOffsets.emsY}%`, left: `${vehicleOffsets.emsX}%` }}
-            >
-              <div className="w-7 h-7 rounded-lg bg-cyan-500 text-[#001738] flex items-center justify-center font-bold shadow-[0_0_15px_rgba(0,227,253,0.8)] border border-white">
-                <Hospital className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[8px] font-mono bg-slate-900/90 text-cyan-300 px-1 rounded mt-0.5 border border-cyan-500/30">
-                EMS-42 (7m)
-              </span>
-            </div>
-
-            {/* Dynamic Moving Vehicle 2: Police Interceptor */}
-            <div
-              className="absolute transition-all duration-1000 flex flex-col items-center"
-              style={{ top: `${vehicleOffsets.polY}%`, left: `${vehicleOffsets.polX}%` }}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shadow-[0_0_15px_rgba(59,130,246,0.8)] border border-white">
-                <Shield className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[8px] font-mono bg-slate-900/90 text-blue-300 px-1 rounded mt-0.5 border border-blue-500/30">
-                POL-14 (4m)
-              </span>
-            </div>
-          </div>
+            )}
+            {selectedIncident && dashboardSummary?.nearest_hospital?.coordinates && (
+              <Polyline 
+                positions={[
+                  [selectedIncident.coordinates.lat, selectedIncident.coordinates.lng],
+                  [dashboardSummary.nearest_hospital.coordinates[1], dashboardSummary.nearest_hospital.coordinates[0]],
+                ]} 
+                color="#10b981" weight={3} dashArray="5, 10" 
+              />
+            )}
+          </MapContainer>
 
           {/* Map Bottom Action Bar */}
           <div className="relative z-10 flex items-center justify-between bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-slate-800 text-xs">
