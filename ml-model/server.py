@@ -36,6 +36,32 @@ async def predict_defect_api(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@app.post("/verify_repair")
+async def verify_repair_api(file: UploadFile = File(...)):
+    """
+    Feeds: POST /api/complaints/:id/verify (Node.js backend).
+    Runs the after-repair photo back through the defect classifier. If the
+    model no longer sees a strong defect signal, the repair is considered verified.
+    """
+    try:
+        image_bytes = await file.read()
+        result = detect_defect(image_bytes)
+        residual_confidence = result.get("confidence_score", 0)
+        repaired = residual_confidence < 40  # low residual defect confidence => surface looks clear
+
+        return JSONResponse(content={
+            "repaired": repaired,
+            "residual_defect_type": result.get("defect_type"),
+            "residual_confidence": residual_confidence,
+            "message": (
+                "Repair verified: no significant defect detected on re-scan."
+                if repaired else
+                f"Defect still detected ({result.get('defect_type')}, {residual_confidence}% confidence) — sending to inspection queue."
+            )
+        })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 @app.post("/predict_risk")
 async def predict_risk_api(payload: dict = Body(...)):
     """

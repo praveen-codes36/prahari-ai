@@ -18,95 +18,70 @@ import {
   X,
   Camera,
 } from 'lucide-react';
-import { MOCK_FIELD_TEAMS } from '../../data/mockData';
-import { MaintenanceWorkOrder } from '../../types';
-import apiClient from '../../services/apiClient';
-import { reverseGeocode } from '../../utils/location';
+import { FieldTeam, MaintenanceWorkOrder } from '../../types';
+import { getWorkOrders, getFieldTeams, assignTeamToWorkOrder } from '../../services/fieldOpsService';
 
 export const MaintenanceCommandCenter: React.FC = () => {
   const navigate = useNavigate();
   const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>([]);
+  const [fieldTeams, setFieldTeams] = useState<FieldTeam[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'P1' | 'P2' | 'P3'>('ALL');
   const [assignModalOrder, setAssignModalOrder] = useState<MaintenanceWorkOrder | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('TEAM-ALPHA');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [assignSuccess, setAssignSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
-    const fetchWorkOrders = async () => {
+    const loadData = async () => {
       try {
-        const response = await apiClient.get('/complaints');
-        if (response.data.success && response.data.data) {
-          const formatted: MaintenanceWorkOrder[] = await Promise.all(response.data.data.map(async (item: any) => {
-            const risk = item.confidence_score || 50;
-            const priority = risk > 80 ? 'P1' : risk > 60 ? 'P2' : 'P3';
-            
-            let address = item.location?.address || 'Unknown Location';
-            const coords = item.location?.coordinates;
-            
-            if (coords && coords.length === 2 && (!address || address === 'Unknown Location' || address === '')) {
-              try {
-                const geo = await reverseGeocode(coords[1], coords[0]);
-                address = geo.address || geo.city || address;
-              } catch (e) {
-                console.error("Geocoding failed for work order", item._id);
-              }
-            }
-
-            return {
-              id: item._id,
-              reportId: item._id,
-              roadName: item.defect_type,
-              location: address,
-              defectType: item.defect_type.toLowerCase(),
-              department: item.assigned_department_id?.name || 'Unassigned',
-              priority,
-              riskScore: risk,
-              status: item.status === 'RESOLVED' ? 'Completed' : 'Assigned',
-              crewName: 'Pending Assignment',
-              assignedVehicle: 'N/A',
-              scheduledTime: 'ASAP',
-              estimatedCompletion: '4 hrs',
-              materialsNeeded: 'Standard Repair Kit',
-              estimatedCostInr: Math.floor(Math.random() * 50000) + 10000,
-              beforePhotoUrl: item.photo_url || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
-            };
-          }));
-          setWorkOrders(formatted);
-        }
+        const [orders, teams] = await Promise.all([getWorkOrders(), getFieldTeams()]);
+        setWorkOrders(orders);
+        setFieldTeams(teams);
+        if (teams[0]) setSelectedTeamId(teams[0].id);
       } catch (error) {
-        console.error('Failed to fetch work orders:', error);
+        console.error('Failed to fetch work orders / field teams:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchWorkOrders();
+    loadData();
   }, []);
   const filteredOrders = workOrders.filter((order) => {
     if (selectedFilter === 'ALL') return true;
     return order.priority === selectedFilter;
   });
 
-  const handleAssignTeam = () => {
-    if (!assignModalOrder) return;
-    const team = MOCK_FIELD_TEAMS.find((t) => t.id === selectedTeamId);
-    setAssignSuccess(true);
-    setTimeout(() => {
-      setWorkOrders((prev) =>
-        prev.map((o) =>
-          o.id === assignModalOrder.id
-            ? {
-                ...o,
-                crewName: team?.name || o.crewName,
-                teamId: team?.id,
-                status: 'En Route',
-              }
-            : o
-        )
-      );
-      setAssignSuccess(false);
-      setAssignModalOrder(null);
-    }, 1000);
+  const openOrders = workOrders.filter((o) => o.status !== 'Completed').length;
+  const criticalOrders = workOrders.filter((o) => o.priority === 'P1' && o.status !== 'Completed').length;
+  const deployedTeams = fieldTeams.filter((t) => t.status !== 'AVAILABLE' && t.status !== 'OFFLINE').length;
+  const completedOrders = workOrders.filter((o) => o.status === 'Completed').length;
+  const availableTeams = fieldTeams.filter((t) => t.status === 'AVAILABLE');
+
+  const handleAssignTeam = async () => {
+    if (!assignModalOrder || !selectedTeamId) return;
+    const team = fieldTeams.find((t) => t.id === selectedTeamId);
+    try {
+      await assignTeamToWorkOrder(assignModalOrder.id, selectedTeamId, assignModalOrder.estimatedCostInr);
+      setAssignSuccess(true);
+      setTimeout(() => {
+        setWorkOrders((prev) =>
+          prev.map((o) =>
+            o.id === assignModalOrder.id
+              ? {
+                  ...o,
+                  crewName: team?.name || o.crewName,
+                  teamId: team?.id,
+                  status: 'En Route',
+                }
+              : o
+          )
+        );
+        setAssignSuccess(false);
+        setAssignModalOrder(null);
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to assign team:', error);
+    }
   };
 
   return (
@@ -133,7 +108,7 @@ export const MaintenanceCommandCenter: React.FC = () => {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-mono text-xs font-semibold border border-slate-700 transition-all"
           >
             <Truck className="w-4 h-4 text-emerald-400" />
-            <span>Field Teams (16 Live)</span>
+            <span>Field Teams ({fieldTeams.length} Live)</span>
           </button>
           <button
             onClick={() => navigate('/authority/field-app')}
@@ -149,32 +124,32 @@ export const MaintenanceCommandCenter: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className="bg-[#0e1626] p-4 rounded-xl border border-blue-500/30 shadow-lg">
           <div className="text-[10px] font-mono text-slate-400 uppercase">OPEN WORK ORDERS</div>
-          <div className="text-2xl font-black text-white mt-1 font-mono">42</div>
+          <div className="text-2xl font-black text-white mt-1 font-mono">{openOrders}</div>
           <div className="text-[10px] font-mono text-blue-300 mt-1">Across 4 municipal zones</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-red-500/40 shadow-lg bg-red-950/20">
           <div className="text-[10px] font-mono text-red-400 uppercase font-bold">P1 CRITICAL</div>
-          <div className="text-2xl font-black text-red-400 mt-1 font-mono animate-pulse">07</div>
-          <div className="text-[10px] font-mono text-red-300 mt-1">Requires 6h repair</div>
+          <div className="text-2xl font-black text-red-400 mt-1 font-mono animate-pulse">{criticalOrders}</div>
+          <div className="text-[10px] font-mono text-red-300 mt-1">Live critical queue</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-emerald-500/30 shadow-lg">
           <div className="text-[10px] font-mono text-slate-400 uppercase">TEAMS DEPLOYED</div>
-          <div className="text-2xl font-black text-emerald-400 mt-1 font-mono">16</div>
-          <div className="text-[10px] font-mono text-emerald-300 mt-1">100% squad mobilization</div>
+          <div className="text-2xl font-black text-emerald-400 mt-1 font-mono">{deployedTeams}</div>
+          <div className="text-[10px] font-mono text-emerald-300 mt-1">Current backend fleet state</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-cyan-500/30 shadow-lg">
           <div className="text-[10px] font-mono text-slate-400 uppercase">REPAIRS COMPLETED</div>
-          <div className="text-2xl font-black text-cyan-400 mt-1 font-mono">128</div>
-          <div className="text-[10px] font-mono text-cyan-300 mt-1">This month (99.2% verified)</div>
+          <div className="text-2xl font-black text-cyan-400 mt-1 font-mono">{completedOrders}</div>
+          <div className="text-[10px] font-mono text-cyan-300 mt-1">Resolved work orders</div>
         </div>
 
         <div className="bg-[#0e1626] p-4 rounded-xl border border-purple-500/30 shadow-lg">
           <div className="text-[10px] font-mono text-slate-400 uppercase">AVG REPAIR TIME</div>
-          <div className="text-2xl font-black text-purple-400 mt-1 font-mono">3.8 <span className="text-xs text-slate-400">hrs</span></div>
-          <div className="text-[10px] font-mono text-purple-300 mt-1">Turnaround from detection</div>
+          <div className="text-2xl font-black text-purple-400 mt-1 font-mono">{workOrders.length ? "Live" : "—"} <span className="text-xs text-slate-400">data</span></div>
+          <div className="text-[10px] font-mono text-purple-300 mt-1">No fabricated metric</div>
         </div>
       </div>
 
@@ -301,7 +276,7 @@ export const MaintenanceCommandCenter: React.FC = () => {
             <div className="space-y-3">
               <label className="text-xs font-mono text-slate-400 block">Select Available Field Squad:</label>
               <div className="space-y-2">
-                {MOCK_FIELD_TEAMS.map((team) => (
+                {(availableTeams.length ? availableTeams : fieldTeams).map((team) => (
                   <div
                     key={team.id}
                     onClick={() => setSelectedTeamId(team.id)}
