@@ -7,6 +7,8 @@ import {
   getComplaintDuplicates,
   getAllComplaints,
   updateComplaintStatus,
+  assignFieldTeam,
+  submitRepairVerification,
   detectDefectInternal,
   checkDuplicateInternal,
   getDepartments
@@ -34,5 +36,11 @@ router.get("/", protect, getAllComplaints);
 router.get("/:id", protect, getComplaintById);
 router.get("/:id/duplicates", protect, getComplaintDuplicates);
 router.patch("/:id/status", protect, updateComplaintStatus);
+
+// Field Operations: Maintenance Command Center assigns a squad to a work order
+router.patch("/:id/assign", protect, assignFieldTeam);
+
+// Field Operations: Field Worker Mobile App submits the after-repair photo for AI verification
+router.post("/:id/verify", protect, upload.single("afterPhoto"), submitRepairVerification);
 
 export default router;

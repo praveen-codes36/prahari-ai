@@ -16,17 +16,49 @@ import {
   ArrowRight,
   Filter,
 } from 'lucide-react';
-import { MOCK_WORK_ORDERS } from '../../data/mockData';
 import { MaintenanceWorkOrder } from '../../types';
+import { getWorkOrders } from '../../services/fieldOpsService';
 
 export const WorkOrderSystem: React.FC = () => {
   const navigate = useNavigate();
-  const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>(MOCK_WORK_ORDERS);
-  const [selectedOrder, setSelectedOrder] = useState<MaintenanceWorkOrder>(MOCK_WORK_ORDERS[0]);
+  const [workOrders, setWorkOrders] = useState<MaintenanceWorkOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<MaintenanceWorkOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const orders = await getWorkOrders();
+        setWorkOrders(orders);
+        setSelectedOrder(orders[0] || null);
+      } catch (error) {
+        console.error('Failed to fetch work orders:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadOrders();
+  }, []);
 
   const steps = ['Assigned', 'En Route', 'On Site', 'Repairing', 'Inspection', 'Completed'] as const;
 
-  const currentStepIndex = steps.indexOf(selectedOrder.status as any);
+  const currentStepIndex = selectedOrder ? steps.indexOf(selectedOrder.status as any) : -1;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 text-slate-400 font-mono text-sm">
+        Loading work orders from backend…
+      </div>
+    );
+  }
+
+  if (!selectedOrder) {
+    return (
+      <div className="flex items-center justify-center h-96 text-slate-400 font-mono text-sm">
+        No active work orders found.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20 pt-1">
@@ -184,7 +216,7 @@ export const WorkOrderSystem: React.FC = () => {
                 Optical AI Computer Vision Repair Verification
               </div>
               <span className="text-xs font-mono font-black text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/40">
-                {selectedOrder.aiVerificationScore || (selectedOrder as any).verificationScore || 97.2}% MATCH PASS
+                {selectedOrder.status === 'Completed' && selectedOrder.aiVerificationScore ? `${selectedOrder.aiVerificationScore}% VERIFIED` : selectedOrder.status === 'Inspection' ? 'PENDING INSPECTION' : 'AWAITING VERIFICATION'}
               </span>
             </div>
 
@@ -197,12 +229,12 @@ export const WorkOrderSystem: React.FC = () => {
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
                   <img
-                    src="https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80"
+                    src={selectedOrder.beforePhotoUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'}
                     alt="Before Repair"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute bottom-2 left-2 bg-black/80 text-red-400 text-[9px] font-mono px-1.5 py-0.5 rounded border border-red-500/40">
-                    Depth: 18cm · Void detected
+                    Defect: {selectedOrder.defectType} · Priority {selectedOrder.priority}
                   </div>
                 </div>
               </div>
@@ -211,16 +243,16 @@ export const WorkOrderSystem: React.FC = () => {
               <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between text-[10px] font-mono">
                   <span className="text-emerald-400 font-bold uppercase">After Repair Verification</span>
-                  <span className="text-cyan-400 font-bold">Passed AI Inspection</span>
+                  <span className="text-cyan-400 font-bold">{selectedOrder.afterPhotoUrl ? (selectedOrder.status === 'Completed' ? 'AI VERIFIED' : 'UNDER REVIEW') : 'NOT SUBMITTED'}</span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
                   <img
-                    src="https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=600&q=80"
+                    src={selectedOrder.afterPhotoUrl || selectedOrder.beforePhotoUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=600&q=80'}
                     alt="After Repair"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute bottom-2 left-2 bg-black/80 text-emerald-400 text-[9px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/40">
-                    Smoothness: 98.4% · Flush with surface
+                    {selectedOrder.aiVerificationNotes || (selectedOrder.afterPhotoUrl ? 'After-repair evidence submitted' : 'No after-repair evidence yet')}
                   </div>
                 </div>
               </div>
@@ -234,14 +266,14 @@ export const WorkOrderSystem: React.FC = () => {
               <span>Ref: NHAI-AUD-{selectedOrder.id}</span>
             </div>
             <div className="text-slate-300">
-              Verified: Geo-coordinates (28.5355, 77.0866) match complaint locus within 1.2 meters. Contractor invoice eligible for escrow release upon engineer sign-off.
+              {selectedOrder.aiVerificationNotes || `Work order ${selectedOrder.status}. Location: ${selectedOrder.location}. Crew: ${selectedOrder.crewName}.`}
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
-              onClick={() => navigate('/authority/field-app')}
+              onClick={() => navigate(`/authority/field-app?orderId=${selectedOrder.id}`)}
               className="py-2.5 px-5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-[#001738] font-black text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
             >
               <Sparkles className="w-4 h-4" />

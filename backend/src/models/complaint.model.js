@@ -36,13 +36,31 @@ const complaintSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["REPORTED", "AI_VERIFIED", "ASSIGNED", "WORK_IN_PROGRESS", "RESOLVED"],
+      enum: [
+        "REPORTED",
+        "AI_VERIFIED",
+        "ASSIGNED",
+        "EN_ROUTE",
+        "ON_SITE",
+        "WORK_IN_PROGRESS",
+        "INSPECTION",
+        "RESOLVED",
+      ],
       default: "REPORTED",
     },
     assigned_department_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Department",
     },
+    assigned_team_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FieldTeam",
+      default: null,
+    },
+    estimated_cost_inr: { type: Number, default: null },
+    repair_photo_url: { type: String, default: null },
+    repair_verified: { type: Boolean, default: false },
+    repair_verification_notes: { type: String, default: "" },
     is_duplicate: { type: Boolean, default: false },
     duplicate_of: {
       type: mongoose.Schema.Types.ObjectId,

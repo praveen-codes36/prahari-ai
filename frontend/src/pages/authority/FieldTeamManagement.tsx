@@ -22,33 +22,33 @@ import {
   Send,
   UserCheck,
 } from 'lucide-react';
-import { MOCK_FIELD_TEAMS } from '../../data/mockData';
 import { FieldTeam } from '../../types';
+import { getFieldTeams, updateFieldTeamStatus as apiUpdateFieldTeamStatus } from '../../services/fieldOpsService';
 
 export const FieldTeamManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [teams, setTeams] = useState<FieldTeam[]>(MOCK_FIELD_TEAMS);
-  const [selectedTeam, setSelectedTeam] = useState<FieldTeam>(MOCK_FIELD_TEAMS[0] || {} as FieldTeam);
+  const [teams, setTeams] = useState<FieldTeam[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<FieldTeam>({} as FieldTeam);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ON SITE' | 'EN ROUTE' | 'AVAILABLE'>('ALL');
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const data = await getFieldTeams();
+        setTeams(data);
+        if (data[0]) setSelectedTeam(data[0]);
+      } catch (error) {
+        console.error('Failed to fetch field teams:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTeams();
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [radioMessage, setRadioMessage] = useState('');
-  const [radioLogs, setRadioLogs] = useState<Array<{ sender: string; time: string; text: string }>>([
-    {
-      sender: 'Insp. R. Yadav (Squad 04)',
-      time: '2 mins ago',
-      text: 'Arrived on site at Andheri link. Traffic diversion cones deployed. Prepping cold asphalt injection.',
-    },
-    {
-      sender: 'Eng. Sunil Verma (Squad 01)',
-      time: '6 mins ago',
-      text: 'En route NH-48 KM 14.2 with geo-grid mesh rolls and cold milling unit. ETA 22 min.',
-    },
-    {
-      sender: 'HQ Dispatch',
-      time: '12 mins ago',
-      text: 'Priority escalation: Heavy monsoon alert active in Western zone. Expedite sub-base sealing.',
-    },
-  ]);
+  const [radioLogs, setRadioLogs] = useState<Array<{ sender: string; time: string; text: string }>>([]);
 
   const filteredTeams = teams.filter((team) => {
     const matchesFilter =
@@ -77,10 +77,15 @@ export const FieldTeamManagement: React.FC = () => {
   };
 
   const handleUpdateTeamStatus = (newStatus: 'AVAILABLE' | 'EN ROUTE' | 'ON SITE') => {
-    if (!selectedTeam) return;
+    if (!selectedTeam?.id) return;
+    // Optimistic UI update, then persist to the backend
     const updated = { ...selectedTeam, status: newStatus };
     setSelectedTeam(updated);
     setTeams((prev) => prev.map((t) => (t.id === selectedTeam.id ? updated : t)));
+
+    apiUpdateFieldTeamStatus(selectedTeam.id, { status: newStatus }).catch((error) => {
+      console.error('Failed to update team status on backend:', error);
+    });
   };
 
   const getEquipmentList = (team: FieldTeam): string[] => {
@@ -120,7 +125,7 @@ export const FieldTeamManagement: React.FC = () => {
               MUNICIPAL & HIGHWAY FLEET TELEMETRY
             </span>
             <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-500/30">
-              ● 16 SQUADS LIVE
+              ● {teams.length} SQUADS LIVE
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
@@ -324,7 +329,13 @@ export const FieldTeamManagement: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => navigate('/authority/field-app')}
+                    onClick={() =>
+                      navigate(
+                        selectedTeam.currentWorkOrderId
+                          ? `/authority/field-app?orderId=${selectedTeam.currentWorkOrderId}`
+                          : '/authority/field-app'
+                      )
+                    }
                     className="px-3.5 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-cyan-300 text-xs font-bold rounded-xl border border-cyan-500/30 flex items-center gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-[#00e3fd]" />

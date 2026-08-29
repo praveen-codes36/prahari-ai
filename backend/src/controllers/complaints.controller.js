@@ -3,6 +3,7 @@ import FormData from "form-data";
 import fs from "fs";
 import { Complaint } from "../models/complaint.model.js";
 import { Department } from "../models/Department.model.js";
+import { FieldTeam } from "../models/field_team.model.js";
 import { triggerRecalculation } from "./orchestration.controller.js";
 
 const MAP_DEFECT_TO_DEPARTMENT = {
@@ -80,7 +81,7 @@ const triggerClosedLoop = (complaint, eventType) => {
 // POST /api/complaints
 export const createComplaint = async (req, res) => {
   try {
-    const { longitude, latitude } = req.body;
+    const { longitude, latitude, address } = req.body;
     const photoFile = req.file;
 
     if (!photoFile || !longitude || !latitude) return res.status(400).json({ message: "Photo and GPS required." });
@@ -110,7 +111,7 @@ export const createComplaint = async (req, res) => {
       defect_type,
       severity,
       confidence_score,
-      location: { type: "Point", coordinates: [parseFloat(longitude), parseFloat(latitude)] },
+      location: { type: "Point", coordinates: [parseFloat(longitude), parseFloat(latitude)], address: address || "" },
       status: "AI_VERIFIED",
       assigned_department_id: department?._id || null,
       is_duplicate: !!existingDuplicate,
@@ -141,7 +142,7 @@ export const getMyComplaints = async (req, res) => {
 // GET /api/complaints/:id
 export const getComplaintById = async (req, res) => {
   try {
-    const complaint = await Complaint.findById(req.params.id).populate("assigned_department_id");
+    const complaint = await Complaint.findById(req.params.id).populate("assigned_department_id assigned_team_id");
     if (!complaint) return res.status(404).json({ message: "Complaint not found." });
     res.status(200).json({ success: true, data: complaint });
   } catch (error) {
@@ -172,7 +173,7 @@ export const getAllComplaints = async (req, res) => {
     if (req.query.department_id) filter.assigned_department_id = req.query.department_id;
     if (req.query.severity) filter.severity = req.query.severity;
     
-    const complaints = await Complaint.find(filter).populate("assigned_department_id").sort({ createdAt: -1 });
+    const complaints = await Complaint.find(filter).populate("assigned_department_id assigned_team_id").sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: complaints });
   } catch (error) {
     res.status(500).json({ message: "Error fetching all complaints." });
@@ -189,14 +190,126 @@ export const updateComplaintStatus = async (req, res) => {
       { new: true }
     );
     
-    // Feature 10: Closed-Loop System Trigger (Recalculate risks on status change)
-    if (complaint) {
-        triggerClosedLoop(complaint, `complaint_status_changed_to_${status}`);
+    if (!complaint) return res.status(404).json({ message: "Complaint not found." });
+
+    // Keep the assigned field team's live state synchronized with the work-order lifecycle.
+    if (complaint.assigned_team_id) {
+      const teamStatusMap = {
+        ASSIGNED: "AVAILABLE",
+        EN_ROUTE: "EN ROUTE",
+        ON_SITE: "ON SITE",
+        WORK_IN_PROGRESS: "ON SITE",
+        INSPECTION: "ON SITE",
+        RESOLVED: "AVAILABLE",
+      };
+      const teamUpdate = { status: teamStatusMap[status] };
+      if (status === "RESOLVED") {
+        teamUpdate.currentWorkOrderId = null;
+        teamUpdate.currentTask = "Standing by";
+      } else if (teamStatusMap[status]) {
+        teamUpdate.currentWorkOrderId = complaint._id;
+      }
+      await FieldTeam.findByIdAndUpdate(complaint.assigned_team_id, teamUpdate);
     }
 
+    triggerClosedLoop(complaint, `complaint_status_changed_to_${status}`);
     res.status(200).json({ success: true, data: complaint });
   } catch (error) {
     res.status(500).json({ message: "Error updating status." });
+  }
+};
+
+// PATCH /api/complaints/:id/assign (Authority — Maintenance Command Center "Assign Team" modal)
+export const assignFieldTeam = async (req, res) => {
+  try {
+    const { teamId, estimatedCostInr, scheduledTime } = req.body;
+    if (!teamId) return res.status(400).json({ message: "teamId is required." });
+
+    const team = await FieldTeam.findById(teamId);
+    if (!team) return res.status(404).json({ message: "Field team not found." });
+
+    const complaint = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      {
+        assigned_team_id: teamId,
+        status: "ASSIGNED",
+        estimated_cost_inr: estimatedCostInr ?? undefined,
+      },
+      { new: true }
+    ).populate("assigned_department_id assigned_team_id");
+
+    if (!complaint) return res.status(404).json({ message: "Complaint not found." });
+
+    // Reflect the assignment on the team itself so Field Team Management stays in sync
+    team.status = "EN ROUTE";
+    team.currentWorkOrderId = complaint._id;
+    team.currentTask = `${complaint.defect_type.replace(/_/g, " ")} repair @ ${complaint.location?.address || "field site"}`;
+    team.etaMin = scheduledTime === "ASAP" || !scheduledTime ? 15 : team.etaMin;
+    await team.save();
+
+    triggerClosedLoop(complaint, "complaint_assigned_to_team");
+
+    return res.status(200).json({ success: true, data: { complaint, team } });
+  } catch (error) {
+    console.error("assignFieldTeam Error:", error);
+    return res.status(500).json({ message: "Failed to assign field team.", error: error.message });
+  }
+};
+
+// POST /api/complaints/:id/verify (Field Worker Mobile App — "Verify with AI" step)
+// Runs the after-repair photo back through the ML defect classifier. Low residual
+// defect confidence => repair verified => work order auto-resolved.
+export const submitRepairVerification = async (req, res) => {
+  try {
+    const afterPhoto = req.file;
+    if (!afterPhoto) return res.status(400).json({ message: "After-repair photo required." });
+
+    const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+    const formData = new FormData();
+    formData.append("file", fs.createReadStream(afterPhoto.path));
+
+    let verification;
+    try {
+      const mlRes = await axios.post(`${ML_SERVICE_URL}/verify_repair`, formData, {
+        headers: formData.getHeaders(),
+      });
+      verification = mlRes.data;
+    } catch (mlErr) {
+      console.warn("ML verify_repair unavailable, defaulting to manual review:", mlErr.message);
+      verification = { repaired: false, residual_confidence: null, message: "ML service unavailable — flagged for manual review." };
+    }
+
+    const newStatus = verification.repaired ? "RESOLVED" : "INSPECTION";
+
+    const complaint = await Complaint.findByIdAndUpdate(
+      req.params.id,
+      {
+        repair_photo_url: afterPhoto.path,
+        repair_verified: !!verification.repaired,
+        repair_verification_notes: verification.message || "",
+        status: newStatus,
+        resolved_at: verification.repaired ? new Date() : undefined,
+      },
+      { new: true }
+    ).populate("assigned_team_id");
+
+    if (!complaint) return res.status(404).json({ message: "Complaint not found." });
+
+    // Free the crew back up once verified so they show as AVAILABLE again
+    if (verification.repaired && complaint.assigned_team_id) {
+      await FieldTeam.findByIdAndUpdate(complaint.assigned_team_id, {
+        status: "AVAILABLE",
+        currentWorkOrderId: null,
+        currentTask: "Standing by",
+      });
+    }
+
+    triggerClosedLoop(complaint, `complaint_verification_${newStatus.toLowerCase()}`);
+
+    return res.status(200).json({ success: true, data: { complaint, verification } });
+  } catch (error) {
+    console.error("submitRepairVerification Error:", error);
+    return res.status(500).json({ message: "Failed to verify repair.", error: error.message });
   }
 };
 

@@ -20,9 +20,19 @@ import {
   Play,
   RotateCcw,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { MaintenanceWorkOrder } from '../../types';
+import { getWorkOrders, getWorkOrderById, submitRepairVerification, updateWorkOrderStatus } from '../../services/fieldOpsService';
 
 export const FieldWorkerMobileApp: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // The job this crew member is currently assigned to. Comes from ?orderId=... when
+  // linked from Work Order System / Maintenance Command Center, otherwise falls back
+  // to the crew's next active work order.
+  const [activeOrder, setActiveOrder] = useState<MaintenanceWorkOrder | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Field execution workflow state
   const [activeStep, setActiveStep] = useState<number>(2); // 0: Navigation, 1: Arrived, 2: Inspection, 3: Evidence, 4: Repairing, 5: Verification, 6: Complete
@@ -38,18 +48,80 @@ export const FieldWorkerMobileApp: React.FC = () => {
   const [compactorTimeMin, setCompactorTimeMin] = useState<number>(25);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [verifiedSuccess, setVerifiedSuccess] = useState<boolean>(false);
+  const [verificationMessage, setVerificationMessage] = useState<string>('');
+
+  React.useEffect(() => {
+    const loadActiveOrder = async () => {
+      try {
+        const orderId = searchParams.get('orderId');
+        if (orderId) {
+          const order = await getWorkOrderById(orderId);
+          setActiveOrder(order);
+          setActiveStep(order.status === 'Completed' ? 6 : order.status === 'Inspection' ? 5 : order.status === 'Repairing' ? 4 : order.status === 'On Site' ? 2 : 1);
+          return;
+        }
+        const orders = await getWorkOrders();
+        const nextJob = orders.find((o) => o.status !== 'Completed') || orders[0] || null;
+        setActiveOrder(nextJob);
+        if (nextJob) setActiveStep(nextJob.status === 'Completed' ? 6 : nextJob.status === 'Inspection' ? 5 : nextJob.status === 'Repairing' ? 4 : nextJob.status === 'On Site' ? 2 : 1);
+      } catch (error) {
+        console.error('Failed to load active work order:', error);
+      }
+    };
+    loadActiveOrder();
+  }, [searchParams]);
 
   const toggleChecklist = (key: keyof typeof checklist) => {
     setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const moveToStep = async (step: number) => {
+    if (!activeOrder) return;
+    const statusByStep: Record<number, MaintenanceWorkOrder['status']> = {
+      1: 'En Route', 2: 'On Site', 4: 'Repairing', 5: 'Inspection', 6: 'Completed',
+    };
+    const nextStatus = statusByStep[step];
+    if (nextStatus) {
+      try {
+        await updateWorkOrderStatus(activeOrder.id, nextStatus);
+        setActiveOrder({ ...activeOrder, status: nextStatus });
+      } catch (error) {
+        console.error('Failed to update work-order status:', error);
+        return;
+      }
+    }
+    setActiveStep(step);
+  };
+
+  // Opens the device camera / file picker
   const handleVerifyProof = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Fired once the crew member picks/captures the after-repair photo.
+  // Sends it to the backend, which forwards it to the ML defect classifier.
+  const handleAfterPhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeOrder) return;
+
     setIsVerifying(true);
-    setTimeout(() => {
+    try {
+      const result = await submitRepairVerification(activeOrder.id, file);
+      setVerificationMessage(result.message);
+      if (result.repaired) {
+        setVerifiedSuccess(true);
+        setActiveStep(6);
+      } else {
+        // Defect still detected — keep the crew on the repairing step for another pass
+        setVerifiedSuccess(false);
+      }
+    } catch (error) {
+      console.error('Repair verification failed:', error);
+      setVerificationMessage('Could not reach AI verification service — flagged for manual review.');
+    } finally {
       setIsVerifying(false);
-      setVerifiedSuccess(true);
-      setActiveStep(6);
-    }, 1500);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -100,20 +172,20 @@ export const FieldWorkerMobileApp: React.FC = () => {
           <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/40 via-amber-950/30 to-slate-900 border border-red-500/40 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono font-bold text-red-400 uppercase bg-red-950 px-2 py-0.5 rounded border border-red-500/50">
-                P1 CRITICAL TASK
+                {activeOrder?.priority || 'P3'} TASK
               </span>
-              <span className="text-xs font-mono text-slate-400">Order #WO-2026-041</span>
+              <span className="text-xs font-mono text-slate-400">Order #{activeOrder?.id || '—'}</span>
             </div>
-            <h3 className="text-lg font-black text-white">Andheri East Link Road (KM 3.4)</h3>
+            <h3 className="text-lg font-black text-white">{activeOrder?.roadName || 'Loading assignment…'}</h3>
             <div className="text-xs text-slate-300">
-              Severe crater pothole & subgrade softening near Chakala Metro Pier 14.
+              {activeOrder ? `${activeOrder.defectType.replace(/_/g, ' ')} · ${activeOrder.location}` : 'No active work order assigned.'}
             </div>
             <div className="flex items-center gap-3 text-xs font-mono pt-1 text-cyan-300">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-red-400" />
-                450m away
+                {activeOrder?.location || 'Awaiting dispatch'}
               </span>
-              <span>· Target Finish: 18:30 IST</span>
+              <span>· Status: {activeOrder?.status || 'Unassigned'}</span>
             </div>
           </div>
 
@@ -131,7 +203,7 @@ export const FieldWorkerMobileApp: React.FC = () => {
               ].map((s) => (
                 <button
                   key={s.step}
-                  onClick={() => setActiveStep(s.step)}
+                  onClick={() => moveToStep(s.step)}
                   className={`py-2 rounded-xl transition-all ${
                     activeStep >= s.step
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-[#001738] shadow-md'
@@ -187,7 +259,7 @@ export const FieldWorkerMobileApp: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setActiveStep(4)}
+                onClick={() => moveToStep(4)}
                 className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-[#001738] font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2"
               >
                 <span>Checklist Complete → Start Repair Execution</span>
@@ -245,14 +317,28 @@ export const FieldWorkerMobileApp: React.FC = () => {
                 </div>
               </div>
 
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleAfterPhotoSelected}
+              />
               <button
                 onClick={handleVerifyProof}
-                disabled={isVerifying}
-                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-cyan-500 text-[#001738] font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2"
+                disabled={isVerifying || !activeOrder}
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-cyan-500 text-[#001738] font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <Camera className="w-4 h-4" />
                 <span>{isVerifying ? 'Running AI Vision Analysis...' : 'Capture Photo & AI Optical Verify'}</span>
               </button>
+
+              {!isVerifying && verificationMessage && !verifiedSuccess && (
+                <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-500/50 text-center text-[11px] font-semibold text-amber-300">
+                  {verificationMessage}
+                </div>
+              )}
             </div>
           )}
 
@@ -261,7 +347,7 @@ export const FieldWorkerMobileApp: React.FC = () => {
               <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
               <h3 className="text-lg font-black text-white">REPAIR VERIFIED & WORK ORDER COMPLETE</h3>
               <p className="text-xs text-emerald-200 max-w-sm mx-auto">
-                AI Computer Vision verified surface smoothness (98.4%). Digital audit token generated and sent to PWD Executive Engineer.
+                {verificationMessage || 'AI Computer Vision verified surface smoothness. Digital audit token generated and sent to PWD Executive Engineer.'}
               </p>
               <button
                 onClick={() => navigate('/authority/work-orders')}
