@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+
 import { FieldTeam } from './src/models/field_team.model.js';
 
 dotenv.config({ path: './.env' });
@@ -25,6 +26,7 @@ const DEMO_TEAMS = [
     vehiclePlate: 'UP70 AB 4521',
     vehicleType: 'Repair Van',
   },
+
   {
     name: 'Squad Bravo',
     callsign: 'BRAVO-02',
@@ -44,6 +46,7 @@ const DEMO_TEAMS = [
     vehiclePlate: 'UP70 CD 7788',
     vehicleType: 'Maintenance Truck',
   },
+
   {
     name: 'Squad Charlie',
     callsign: 'CHARLIE-03',
@@ -63,6 +66,7 @@ const DEMO_TEAMS = [
     vehiclePlate: 'UP70 EF 3391',
     vehicleType: 'Repair Van',
   },
+
   {
     name: 'Squad Delta',
     callsign: 'DELTA-04',
@@ -82,18 +86,30 @@ const DEMO_TEAMS = [
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/prahari-ai');
+    await mongoose.connect(
+      process.env.MONGO_URI ||
+      'mongodb://localhost:27017/prahari-ai'
+    );
+
     console.log('Connected to MongoDB');
 
-    if ((await FieldTeam.countDocuments()) === 0) {
+    const count = await FieldTeam.countDocuments();
+
+    if (count === 0) {
       await FieldTeam.insertMany(DEMO_TEAMS);
+
       console.log(`Seeded ${DEMO_TEAMS.length} field teams.`);
     } else {
-      console.log('Field teams already exist — skipping seed. Delete the collection first to reseed.');
+      console.log(
+        'Field teams already exist — skipping seed.'
+      );
     }
 
     console.log('Seeding complete.');
+
+    await mongoose.disconnect();
     process.exit(0);
+
   } catch (err) {
     console.error('Seeding failed:', err);
     process.exit(1);

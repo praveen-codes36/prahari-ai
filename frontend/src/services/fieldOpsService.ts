@@ -1,6 +1,5 @@
 import apiClient from './apiClient';
 import { FieldTeam, MaintenanceWorkOrder } from '../types';
-import { reverseGeocode } from '../utils/location';
 
 const assetUrl = (value?: string | null) => {
   if (!value) return undefined;
@@ -80,16 +79,33 @@ const priorityFromComplaint = (item: any): MaintenanceWorkOrder['priority'] => {
   return bySeverity[item.severity] || 'P3';
 };
 
-export const mapComplaintToWorkOrder = async (item: any): Promise<MaintenanceWorkOrder> => {
+export const mapComplaintToWorkOrder = (item: any): MaintenanceWorkOrder => {
   const priority = priorityFromComplaint(item);
-  let address = item.location?.address || 'Location unavailable';
+
+  // Use the address stored by the backend. Do not reverse-geocode from the browser:
+  // repeated calls to Nominatim caused CORS errors and slowed every work-order page.
   const coords = item.location?.coordinates;
-  if (coords?.length === 2 && (!item.location?.address || address === 'Location unavailable')) {
-    try {
-      const geo = await reverseGeocode(coords[1], coords[0]);
-      address = geo.address || geo.city || address;
-    } catch { /* keep backend value */ }
-  }
+  const latitude = Number(
+    item.location?.latitude ??
+    item.latitude ??
+    (Array.isArray(coords) && coords.length === 2 ? coords[1] : NaN)
+  );
+  const longitude = Number(
+    item.location?.longitude ??
+    item.longitude ??
+    (Array.isArray(coords) && coords.length === 2 ? coords[0] : NaN)
+  );
+
+  const coordinateFallback =
+    Number.isFinite(latitude) && Number.isFinite(longitude)
+      ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+      : 'Location unavailable';
+
+  const address =
+    item.location?.address ||
+    item.address ||
+    item.location_name ||
+    coordinateFallback;
   const team = item.assigned_team_id;
   const recommendation = item.ai_recommendation || {};
   const plan = item.repair_plan || {};
@@ -138,7 +154,7 @@ export const mapComplaintToWorkOrder = async (item: any): Promise<MaintenanceWor
 
 export const getWorkOrders = async (): Promise<MaintenanceWorkOrder[]> => {
   const res = await apiClient.get('/complaints');
-  return Promise.all((res.data?.data || []).map(mapComplaintToWorkOrder));
+  return (res.data?.data || []).map(mapComplaintToWorkOrder);
 };
 
 export const getWorkOrderById = async (id: string): Promise<MaintenanceWorkOrder> => {
@@ -151,7 +167,7 @@ export const getCurrentTeamWorkOrder = async (teamId: string): Promise<{ team: F
   const data = res.data?.data;
   return {
     team: mapBackendTeam(data.team),
-    workOrder: data.workOrder ? await mapComplaintToWorkOrder(data.workOrder) : null,
+    workOrder: data.workOrder ? mapComplaintToWorkOrder(data.workOrder) : null,
   };
 };
 
