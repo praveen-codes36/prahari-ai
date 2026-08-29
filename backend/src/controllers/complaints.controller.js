@@ -159,6 +159,87 @@ export const createComplaint = async (req, res) => {
   }
 };
 
+// POST /api/complaints/work-order (Authority generated preventive work order)
+export const createWorkOrder = async (req, res) => {
+  try {
+    const {
+      road_name,
+      location_name,
+      coordinates,
+      defect_type = "POTHOLE",
+      severity = "HIGH",
+      department_name = "Road",
+      assigned_team_name,
+      estimated_cost_inr,
+      scheduled_time,
+      description
+    } = req.body;
+
+    let department = await Department.findOne({ name: new RegExp(department_name || "Road", "i") });
+    if (!department) {
+      department = await Department.findOne({});
+    }
+
+    let assigned_team_id = null;
+    if (assigned_team_name) {
+      const firstWord = assigned_team_name.split(" ")[0];
+      const team = await FieldTeam.findOne({ name: new RegExp(firstWord, "i") });
+      if (team) assigned_team_id = team._id;
+    }
+    if (!assigned_team_id) {
+      const anyTeam = await FieldTeam.findOne({});
+      if (anyTeam) assigned_team_id = anyTeam._id;
+    }
+
+    const coords = Array.isArray(coordinates) && coordinates.length === 2 ? coordinates : [81.8463, 25.4358];
+
+    const newOrder = await Complaint.create({
+      citizen_id: req.user?._id || req.user?.id,
+      road_name: road_name || "Prayagraj Arterial Corridor",
+      location: {
+        type: "Point",
+        coordinates: coords,
+        address: location_name || "Civil Lines, Prayagraj"
+      },
+      defect_type: defect_type,
+      severity: severity,
+      confidence_score: 95,
+      status: "ASSIGNED",
+      assigned_department_id: department?._id,
+      assigned_team_id: assigned_team_id,
+      estimated_cost_inr: estimated_cost_inr || 185000,
+      scheduled_time: scheduled_time || "Within 7 Days",
+      repair_plan: {
+        materials: ["Micro-surfacing polymer", "Asphalt aggregate", "Subgrade seal grout"],
+        estimated_completion_minutes: 180,
+        safety_requirements: ["High-visibility barricades", "Lane flow divergence", "Surface temperature audit"]
+      },
+      ai_recommendation: {
+        material: "Polymer cold-mix & structural grout",
+        material_kg: 450,
+        safety_zone_m: 25,
+        notes: description || "Preventive intervention to avoid catastrophic 90-day subgrade collapse.",
+        available: true
+      }
+    });
+
+    if (assigned_team_id) {
+      await FieldTeam.findByIdAndUpdate(assigned_team_id, {
+        currentWorkOrderId: newOrder._id,
+        currentTask: `Preventive: ${road_name || 'Corridor repair'}`,
+        status: "ASSIGNED"
+      });
+    }
+
+    triggerClosedLoop(newOrder, "work_order_created");
+
+    return res.status(201).json({ success: true, data: newOrder });
+  } catch (error) {
+    console.error("createWorkOrder Error:", error);
+    return res.status(500).json({ message: "Failed to create work order", error: error.message });
+  }
+};
+
 // GET /api/complaints/me
 export const getMyComplaints = async (req, res) => {
   try {

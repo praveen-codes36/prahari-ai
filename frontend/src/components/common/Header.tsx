@@ -21,21 +21,35 @@ import {
   AlertOctagon,
   Bot,
   LogOut,
+  Flame,
+  AlertTriangle,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { authService, ROLE_PRESETS } from '../../services/authService';
+import apiClient from '../../services/apiClient';
+import { reverseGeocode } from '../../utils/location';
 import {
   MOCK_ROAD_SEGMENTS,
-  MOCK_REPORTS,
   MOCK_WORK_ORDERS,
   MOCK_FIELD_TEAMS,
   MOCK_EMERGENCY_INCIDENTS,
-  MOCK_SYSTEM_ALERTS,
 } from '../../data/mockData';
 
 interface HeaderProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
+}
+
+interface LiveHeaderAlert {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  location: string;
+  timestamp: string;
+  isRead: boolean;
+  status: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => {
@@ -45,10 +59,56 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
-  const [unreadAlerts, setUnreadAlerts] = useState(MOCK_SYSTEM_ALERTS);
+  const [unreadAlerts, setUnreadAlerts] = useState<LiveHeaderAlert[]>([]);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  const fetchLiveAlerts = async () => {
+    try {
+      const res = await apiClient.get('/alerts/active');
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        const formatted: LiveHeaderAlert[] = await Promise.all(
+          res.data.data.slice(0, 10).map(async (item: any) => {
+            let locStr = 'Prayagraj Corridor';
+            const coords = item.location?.coordinates;
+            if (coords && coords.length === 2) {
+              try {
+                const geo = await reverseGeocode(coords[1], coords[0]);
+                locStr = geo.address || geo.city || locStr;
+              } catch {
+                locStr = `${coords[1].toFixed(4)}°N, ${coords[0].toFixed(4)}°E`;
+              }
+            }
+
+            const diffMins = Math.round((Date.now() - new Date(item.created_at || Date.now()).getTime()) / 60000);
+            const timeLabel = diffMins <= 1 ? 'Just now' : diffMins < 60 ? `${diffMins} mins ago` : `${Math.round(diffMins / 60)} hrs ago`;
+
+            return {
+              id: item._id,
+              type: item.type || 'ACCIDENT',
+              severity: item.severity || 'HIGH',
+              title: item.type === 'ACCIDENT' ? 'Critical Collision Incident' : item.type === 'HIGH_RISK_ZONE' ? 'High Risk Road Surge' : `${item.type} Alert`,
+              message: item.message || 'Active road safety anomaly detected.',
+              location: locStr,
+              timestamp: timeLabel,
+              isRead: item.status === 'ACKNOWLEDGED' || item.status === 'RESOLVED',
+              status: item.status || 'ACTIVE'
+            };
+          })
+        );
+        setUnreadAlerts(formatted);
+      }
+    } catch {
+      // Non-critical fallback
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveAlerts();
+    const interval = setInterval(fetchLiveAlerts, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -331,9 +391,9 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
             title="System Alerts & Incident Data Info"
           >
             <Bell className="w-4 h-4" />
-            {criticalAlertCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                {criticalAlertCount}
+            {unreadAlerts.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff5252] text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-md">
+                {unreadAlerts.length}
               </span>
             )}
           </button>
@@ -342,55 +402,66 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
             <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-4 z-50 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <div className="flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-red-400" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  <Radio className="w-4 h-4 text-[#ff5252] animate-pulse" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
                     Operational Alerts
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-cyan-400">
+                <span className="text-[10px] font-mono text-[#00daf3]">
                   {unreadAlerts.length} total
                 </span>
               </div>
 
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {unreadAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    onClick={() => {
-                      setIsNotificationsOpen(false);
-                      if (alert.relatedId?.startsWith('INC')) navigate('/authority/emergency-ops');
-                      else navigate('/authority/alerts');
-                    }}
-                    className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
-                      alert.type === 'CRITICAL'
-                        ? 'bg-red-950/20 border-red-500/30 hover:bg-red-950/40'
-                        : alert.type === 'WARNING'
-                        ? 'bg-amber-950/20 border-amber-500/30 hover:bg-amber-950/40'
-                        : 'bg-slate-800/40 border-slate-700 hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span
-                        className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                          alert.type === 'CRITICAL'
-                            ? 'bg-red-500/30 text-red-300'
-                            : alert.type === 'WARNING'
-                            ? 'bg-amber-500/30 text-amber-300'
-                            : 'bg-blue-500/30 text-blue-300'
-                        }`}
-                      >
-                        {alert.type}
-                      </span>
-                      <span className="text-[9px] font-mono text-slate-400">{alert.timestamp}</span>
-                    </div>
-                    <div className="text-xs font-bold text-white">{alert.title}</div>
-                    <div className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">{alert.message}</div>
-                    <div className="text-[10px] font-mono text-cyan-400 mt-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {alert.location}
-                    </div>
+                {unreadAlerts.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400 font-mono">
+                    No active operational alerts.
                   </div>
-                ))}
+                ) : (
+                  unreadAlerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      onClick={() => {
+                        setIsNotificationsOpen(false);
+                        if (alert.type === 'ACCIDENT') navigate('/authority/emergency-routes');
+                        else navigate('/authority/alerts');
+                      }}
+                      className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                        alert.severity === 'CRITICAL' || alert.type === 'ACCIDENT'
+                          ? 'bg-red-950/20 border-red-500/30 hover:bg-red-950/40 border-l-2 border-l-[#ff5252]'
+                          : alert.severity === 'HIGH' || alert.type === 'HIGH_RISK_ZONE'
+                          ? 'bg-amber-950/20 border-amber-500/30 hover:bg-amber-950/40 border-l-2 border-l-[#ffa000]'
+                          : 'bg-slate-800/40 border-slate-700 hover:bg-slate-800 border-l-2 border-l-[#00daf3]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                              alert.severity === 'CRITICAL' || alert.type === 'ACCIDENT'
+                                ? 'bg-red-500/30 text-red-300'
+                                : alert.severity === 'HIGH'
+                                ? 'bg-amber-500/30 text-amber-300'
+                                : 'bg-cyan-500/30 text-cyan-300'
+                            }`}
+                          >
+                            {alert.type}
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-400">
+                            {alert.severity}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-mono text-slate-400">{alert.timestamp}</span>
+                      </div>
+                      <div className="text-xs font-bold text-white line-clamp-1">{alert.title}</div>
+                      <div className="text-[11px] text-slate-300 line-clamp-2 mt-0.5">{alert.message}</div>
+                      <div className="text-[10px] font-mono text-[#00daf3] mt-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-[#00daf3]" />
+                        <span className="truncate">{alert.location}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="pt-2 border-t border-slate-800 flex justify-between">
@@ -399,15 +470,22 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                     setIsNotificationsOpen(false);
                     navigate('/authority/alerts');
                   }}
-                  className="text-xs font-mono text-[#00e3fd] hover:underline"
+                  className="text-xs font-mono text-[#00e3fd] hover:underline flex items-center gap-1"
                 >
                   View All Alerts →
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setUnreadAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
+                    try {
+                      await Promise.all(
+                        unreadAlerts.filter((a) => !a.isRead).map((a) =>
+                          apiClient.patch(`/alerts/${a.id}/status`, { status: 'ACKNOWLEDGED' })
+                        )
+                      );
+                    } catch {}
                   }}
-                  className="text-[11px] text-slate-400 hover:text-white"
+                  className="text-[11px] text-slate-400 hover:text-white font-mono"
                 >
                   Mark All Read
                 </button>

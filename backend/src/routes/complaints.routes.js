@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { 
   createComplaint,
+  createWorkOrder,
   getMyComplaints,
   getComplaintById,
   getComplaintDuplicates,
@@ -29,6 +30,7 @@ router.get("/me", protect, getMyComplaints);
 // AUTHORITY ROUTES
 // ==========================================
 // Must be defined before /:id so it doesn't clash
+router.post("/work-order", protect, createWorkOrder);
 router.get("/", protect, getAllComplaints);
 
 // ==========================================

@@ -4,8 +4,19 @@ const maintenancePredictionSchema = new Schema(
     {
         road_segment_id: {
             type: Schema.Types.ObjectId,
-            ref: "RiskZone", // Assuming RoadSegment is stored as RiskZone based on other models
+            ref: "RoadSegment",
             required: true,
+        },
+        road_name: {
+            type: String,
+        },
+        road_type: {
+            type: String,
+            default: "Highway Segment",
+        },
+        location: {
+            type: String,
+            default: "Prayagraj",
         },
         current_risk_score: {
             type: Number,
