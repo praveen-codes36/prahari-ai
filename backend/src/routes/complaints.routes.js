@@ -11,7 +11,8 @@ import {
   submitRepairVerification,
   detectDefectInternal,
   checkDuplicateInternal,
-  getDepartments
+  getDepartments,
+  updateMaterialsUsed
 } from "../controllers/complaints.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 
@@ -36,6 +37,9 @@ router.get("/", protect, getAllComplaints);
 router.get("/:id", protect, getComplaintById);
 router.get("/:id/duplicates", protect, getComplaintDuplicates);
 router.patch("/:id/status", protect, updateComplaintStatus);
+
+// Field Operations: persist material usage
+router.patch("/:id/materials", protect, updateMaterialsUsed);
 
 // Field Operations: Maintenance Command Center assigns a squad to a work order
 router.patch("/:id/assign", protect, assignFieldTeam);

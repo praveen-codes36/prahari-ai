@@ -4,18 +4,18 @@ import {
   getFieldTeamById,
   createFieldTeam,
   updateFieldTeamStatus,
+  getCurrentTeamWorkOrder,
 } from "../controllers/field_team.controller.js";
+import { getTeamMessages, createTeamMessage } from "../controllers/team_message.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// GET /api/field-teams  (?status=AVAILABLE to filter)
 router.route("/").get(protect, getAllFieldTeams).post(protect, createFieldTeam);
-
-// GET /api/field-teams/:id
-router.route("/:id").get(protect, getFieldTeamById);
-
-// PATCH /api/field-teams/:id/status
+router.get("/:id/current-work-order", protect, getCurrentTeamWorkOrder);
+router.get("/:id/messages", protect, getTeamMessages);
+router.post("/:id/messages", protect, createTeamMessage);
 router.route("/:id/status").patch(protect, updateFieldTeamStatus);
+router.route("/:id").get(protect, getFieldTeamById);
 
 export default router;

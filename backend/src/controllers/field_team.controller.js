@@ -78,3 +78,18 @@ export const updateFieldTeamStatus = async (req, res) => {
       .json(new ApiError(error.statusCode || 500, error.message || "Error updating field team status", [], error.stack));
   }
 };
+
+// @desc Get the current work order assigned to a specific field team
+// @route GET /api/field-teams/:id/current-work-order
+export const getCurrentTeamWorkOrder = async (req, res) => {
+  try {
+    const team = await FieldTeam.findById(req.params.id).populate({
+      path: "currentWorkOrderId",
+      populate: ["assigned_department_id", "assigned_team_id"],
+    });
+    if (!team) throw new ApiError(404, "Field team not found");
+    return res.status(200).json(new ApiResponse(200, { team, workOrder: team.currentWorkOrderId || null }, "Current team work order retrieved"));
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(new ApiError(error.statusCode || 500, error.message || "Failed to fetch current work order", [], error.stack));
+  }
+};

@@ -23,7 +23,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { FieldTeam } from '../../types';
-import { getFieldTeams, updateFieldTeamStatus as apiUpdateFieldTeamStatus } from '../../services/fieldOpsService';
+import { getFieldTeams, updateFieldTeamStatus as apiUpdateFieldTeamStatus, getTeamMessages, sendTeamMessage } from '../../services/fieldOpsService';
 
 export const FieldTeamManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ export const FieldTeamManagement: React.FC = () => {
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [radioMessage, setRadioMessage] = useState('');
-  const [radioLogs, setRadioLogs] = useState<Array<{ sender: string; time: string; text: string }>>([]);
+  const [radioLogs, setRadioLogs] = useState<Array<{ id: string; sender: string; time: string; text: string }>>([]);
 
   const filteredTeams = teams.filter((team) => {
     const matchesFilter =
@@ -64,16 +64,31 @@ export const FieldTeamManagement: React.FC = () => {
     return matchesFilter && matchesSearch;
   });
 
-  const handleSendRadio = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!radioMessage.trim()) return;
-    const newLog = {
-      sender: 'HQ Dispatch',
-      time: 'Just now',
-      text: radioMessage.trim(),
+  React.useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedTeam?.id) { setRadioLogs([]); return; }
+      try {
+        const data = await getTeamMessages(selectedTeam.id);
+        setRadioLogs(data.map((m) => ({ id: m.id, sender: m.sender, time: new Date(m.createdAt).toLocaleString(), text: m.message })));
+      } catch (error) {
+        console.error('Failed to load team messages:', error);
+        setRadioLogs([]);
+      }
     };
-    setRadioLogs((prev) => [newLog, ...prev]);
-    setRadioMessage('');
+    loadMessages();
+  }, [selectedTeam?.id]);
+
+  const handleSendRadio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!radioMessage.trim() || !selectedTeam?.id) return;
+    try {
+      const created = await sendTeamMessage(selectedTeam.id, 'HQ Dispatch', radioMessage.trim());
+      setRadioLogs((prev) => [...prev, { id: created.id, sender: created.sender, time: new Date(created.createdAt).toLocaleString(), text: created.message }]);
+      setRadioMessage('');
+    } catch (error) {
+      console.error('Failed to send team message:', error);
+      alert('Could not send the radio message.');
+    }
   };
 
   const handleUpdateTeamStatus = (newStatus: 'AVAILABLE' | 'EN ROUTE' | 'ON SITE') => {
@@ -95,24 +110,19 @@ export const FieldTeamManagement: React.FC = () => {
     if (Array.isArray((team as any).equipmentLoadout) && (team as any).equipmentLoadout.length > 0) {
       return (team as any).equipmentLoadout;
     }
-    return [
-      '✓ Polymer Cold-Mix (450kg)',
-      '✓ Vibro-Compactor 1.2T',
-      '✓ Safety Barrier Cones (24x)',
-      '✓ AI Laser Depth Gauge',
-    ];
+    return [];
   };
 
   const getBatteryPct = (team: FieldTeam): number => {
     if (typeof team.batteryPct === 'number') return team.batteryPct;
     if (typeof (team as any).batteryPercent === 'number') return (team as any).batteryPercent;
-    return 85;
+    return 0;
   };
 
   const getMembersCount = (team: FieldTeam): number => {
     if (typeof team.membersCount === 'number') return team.membersCount;
     if (typeof (team as any).memberCount === 'number') return (team as any).memberCount;
-    return 4;
+    return 0;
   };
 
   return (
@@ -145,7 +155,7 @@ export const FieldTeamManagement: React.FC = () => {
             <span>Maintenance Command</span>
           </button>
           <button
-            onClick={() => navigate('/authority/field-app')}
+            onClick={() => navigate(selectedTeam?.id ? `/authority/field-app?teamId=${selectedTeam.id}` : '/authority/field-app')}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-[#001738] font-black text-xs shadow-lg transition-all"
           >
             <Sparkles className="w-4 h-4" />
@@ -277,7 +287,7 @@ export const FieldTeamManagement: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-mono pt-2 border-t border-slate-800/80">
                     <div className="bg-slate-900/80 p-1.5 rounded-lg">
                       <span className="text-slate-400 block">VEHICLE</span>
-                      <span className="text-white font-bold">{team.vehiclePlate || 'MH-04-FT'}</span>
+                      <span className="text-white font-bold">{team.vehiclePlate || 'Not configured'}</span>
                     </div>
                     <div className="bg-slate-900/80 p-1.5 rounded-lg">
                       <span className="text-slate-400 block">BATTERY</span>
@@ -290,7 +300,7 @@ export const FieldTeamManagement: React.FC = () => {
                   </div>
 
                   <div className="text-[11px] text-slate-300 flex items-center justify-between">
-                    <span className="truncate">Current: <strong className="text-white">{team.currentTask || 'Patrol Standby'}</strong></span>
+                    <span className="truncate">Current: <strong className="text-white">{team.currentTask || 'No active task'}</strong></span>
                     <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   </div>
                 </div>
@@ -323,7 +333,7 @@ export const FieldTeamManagement: React.FC = () => {
                   <h2 className="text-xl font-bold text-white mt-1">{selectedTeam.name}</h2>
                   <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                     <MapPin className="w-3.5 h-3.5 text-red-400" />
-                    <span>{selectedTeam.locationName || 'Assigned Highway Sector'}</span>
+                    <span>{selectedTeam.locationName || 'Location unavailable'}</span>
                   </div>
                 </div>
 
@@ -378,15 +388,15 @@ export const FieldTeamManagement: React.FC = () => {
                   )}
                 </div>
                 <div className="text-sm font-bold text-white">
-                  {selectedTeam.currentTask || 'Standard Highway Patrol & Preventive Priority Check'}
+                  {selectedTeam.currentTask || 'No active task'}
                 </div>
                 <div className="flex items-center justify-between text-xs font-mono text-slate-400 pt-1">
                   <span>
-                    GPS: {selectedTeam.coordinates?.lat?.toFixed(4) ?? '19.1158'},{' '}
-                    {selectedTeam.coordinates?.lng?.toFixed(4) ?? '72.8682'}
+                    GPS: {selectedTeam.coordinates?.lat ? selectedTeam.coordinates.lat.toFixed(4) : 'Unavailable'},{' '}
+                    {selectedTeam.coordinates?.lng ? selectedTeam.coordinates.lng.toFixed(4) : 'Unavailable'}
                   </span>
                   <span className="text-emerald-400 font-bold">
-                    Shift: {selectedTeam.shiftHours || '06:00 - 18:00 IST'}
+                    Shift: {selectedTeam.shiftHours || 'Not configured'}
                   </span>
                 </div>
               </div>
@@ -397,7 +407,7 @@ export const FieldTeamManagement: React.FC = () => {
                   ONBOARD EQUIPMENT & MATERIAL LOADOUT:
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
-                  {getEquipmentList(selectedTeam).map((eq, idx) => (
+                  {getEquipmentList(selectedTeam).length ? getEquipmentList(selectedTeam).map((eq, idx) => (
                     <div
                       key={idx}
                       className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 text-xs flex items-center gap-2"
@@ -405,7 +415,7 @@ export const FieldTeamManagement: React.FC = () => {
                       <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
                       <span className="text-slate-200 truncate">{eq}</span>
                     </div>
-                  ))}
+                  )) : <div className="text-xs text-slate-500 col-span-2 p-3">No equipment loadout recorded.</div>}
                 </div>
               </div>
 
@@ -414,9 +424,9 @@ export const FieldTeamManagement: React.FC = () => {
                 <div className="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-800/80 pb-2">
                   <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
                     <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                    RADIO CHANNEL: VHF-148.25 MHz
+                    TEAM COMMUNICATION CHANNEL
                   </span>
-                  <span className="text-emerald-400 font-bold">Signal: 98% (Encrypted)</span>
+                  <span className="text-emerald-400 font-bold">Signal: Backend connected</span>
                 </div>
 
                 {/* Radio Log Messages */}

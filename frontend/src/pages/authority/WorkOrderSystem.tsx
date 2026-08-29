@@ -228,11 +228,11 @@ export const WorkOrderSystem: React.FC = () => {
                   <span className="text-slate-400">Citizen & AI Drone Scan</span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
-                  <img
-                    src={selectedOrder.beforePhotoUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=600&q=80'}
-                    alt="Before Repair"
-                    className="w-full h-full object-cover"
-                  />
+                  {selectedOrder.beforePhotoUrl ? (
+                    <img src={selectedOrder.beforePhotoUrl} alt="Before Repair" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-xs text-slate-500">No inspection photo available</div>
+                  )}
                   <div className="absolute bottom-2 left-2 bg-black/80 text-red-400 text-[9px] font-mono px-1.5 py-0.5 rounded border border-red-500/40">
                     Defect: {selectedOrder.defectType} · Priority {selectedOrder.priority}
                   </div>
@@ -246,11 +246,11 @@ export const WorkOrderSystem: React.FC = () => {
                   <span className="text-cyan-400 font-bold">{selectedOrder.afterPhotoUrl ? (selectedOrder.status === 'Completed' ? 'AI VERIFIED' : 'UNDER REVIEW') : 'NOT SUBMITTED'}</span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
-                  <img
-                    src={selectedOrder.afterPhotoUrl || selectedOrder.beforePhotoUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=600&q=80'}
-                    alt="After Repair"
-                    className="w-full h-full object-cover"
-                  />
+                  {selectedOrder.afterPhotoUrl ? (
+                    <img src={selectedOrder.afterPhotoUrl} alt="After Repair" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-xs text-slate-500">Awaiting after-repair evidence</div>
+                  )}
                   <div className="absolute bottom-2 left-2 bg-black/80 text-emerald-400 text-[9px] font-mono px-1.5 py-0.5 rounded border border-emerald-500/40">
                     {selectedOrder.aiVerificationNotes || (selectedOrder.afterPhotoUrl ? 'After-repair evidence submitted' : 'No after-repair evidence yet')}
                   </div>

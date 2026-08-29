@@ -21,23 +21,33 @@ const MAP_ML_LABEL_TO_ENUM = {
   "Drainage Issues": "DRAINAGE"
 };
 
+const COST_BY_SEVERITY = { LOW: 8000, MEDIUM: 15000, HIGH: 30000, CRITICAL: 50000 };
+
+const buildRepairPlan = (severity, mlResult = {}) => {
+  const completion = severity === "CRITICAL" ? 240 : severity === "HIGH" ? 180 : severity === "MEDIUM" ? 120 : 60;
+  const material = mlResult.recommended_repair?.material || mlResult.material || "Standard repair material";
+  return {
+    materials: Array.isArray(mlResult.recommended_repair?.materials)
+      ? mlResult.recommended_repair.materials
+      : [material],
+    estimated_completion_minutes: Number(mlResult.recommended_repair?.estimated_completion_minutes ?? completion),
+    safety_requirements: mlResult.recommended_repair?.safety_requirements || ["Secure work zone before repair"],
+  };
+};
+
 // ==========================================
 // INTERNAL HELPERS
 // ==========================================
 export const detectDefectViaML = async (filePath) => {
+  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000/predict";
+  const formData = new FormData();
+  formData.append("file", fs.createReadStream(filePath));
   try {
-    const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000/predict";
-    const formData = new FormData();
-    formData.append("file", fs.createReadStream(filePath));
-    const response = await axios.post(ML_SERVICE_URL, formData, { headers: formData.getHeaders() });
-    return response.data;
+    const response = await axios.post(ML_SERVICE_URL, formData, { headers: formData.getHeaders(), timeout: 30000 });
+    return { available: true, ...response.data };
   } catch (err) {
-    console.warn("ML Service unavailable, falling back to mock ML data:", err.message);
-    return {
-        defect_type: "Pothole",
-        severity: "HIGH",
-        confidence_score: 88
-    };
+    console.warn("ML Service unavailable:", err.message);
+    return { available: false, error: err.message };
   }
 };
 
@@ -87,10 +97,18 @@ export const createComplaint = async (req, res) => {
     if (!photoFile || !longitude || !latitude) return res.status(400).json({ message: "Photo and GPS required." });
 
     const mlResult = await detectDefectViaML(photoFile.path);
-    const raw_defect = mlResult.defect_type || "OTHER";
-    const defect_type = MAP_ML_LABEL_TO_ENUM[raw_defect] || "OTHER";
-    const severity = mlResult.severity || "MEDIUM";
-    const confidence_score = mlResult.confidence_score || 50;
+    const aiAvailable = mlResult.available !== false;
+    const raw_defect = aiAvailable ? (mlResult.defect_type || "OTHER") : "OTHER";
+    const defect_type = MAP_ML_LABEL_TO_ENUM[raw_defect] || raw_defect || "OTHER";
+    const severity = aiAvailable && ["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(mlResult.severity)
+      ? mlResult.severity
+      : "MEDIUM";
+    const confidence_score = aiAvailable && Number.isFinite(Number(mlResult.confidence_score))
+      ? Number(mlResult.confidence_score)
+      : null;
+    const risk_score = Number.isFinite(Number(mlResult.risk_score)) ? Number(mlResult.risk_score) : null;
+    const recommendation = mlResult.recommended_repair || mlResult.ai_recommendation || {};
+    const repair_plan = buildRepairPlan(severity, mlResult);
 
     const deptName = MAP_DEFECT_TO_DEPARTMENT[defect_type] || "Public Works";
     let department = await Department.findOne({ name: deptName });
@@ -111,8 +129,20 @@ export const createComplaint = async (req, res) => {
       defect_type,
       severity,
       confidence_score,
+      risk_score,
+      ai_analysis_status: aiAvailable ? "AVAILABLE" : "UNAVAILABLE",
+      ai_recommendation: {
+        estimated_depth_cm: recommendation.estimated_depth_cm ?? recommendation.depth_cm ?? null,
+        material: recommendation.material || "",
+        material_kg: recommendation.material_kg ?? null,
+        safety_zone_m: recommendation.safety_zone_m ?? null,
+        notes: recommendation.notes || "",
+      },
+      repair_plan,
+      materials_used: {},
+      estimated_cost_inr: COST_BY_SEVERITY[severity],
       location: { type: "Point", coordinates: [parseFloat(longitude), parseFloat(latitude)], address: address || "" },
-      status: "AI_VERIFIED",
+      status: aiAvailable ? "AI_VERIFIED" : "REPORTED",
       assigned_department_id: department?._id || null,
       is_duplicate: !!existingDuplicate,
       duplicate_of: existingDuplicate ? existingDuplicate._id : null,
@@ -219,6 +249,33 @@ export const updateComplaintStatus = async (req, res) => {
   }
 };
 
+
+// PATCH /api/complaints/:id/materials
+export const updateMaterialsUsed = async (req, res) => {
+  try {
+    const allowed = ["cold_mix_bags", "asphalt_kg", "concrete_kg", "compactor_minutes"];
+    const update = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        const value = Number(req.body[key]);
+        if (!Number.isFinite(value) || value < 0) return res.status(400).json({ message: `${key} must be a non-negative number.` });
+        update[`materials_used.${key}`] = value;
+      }
+    }
+    if (req.body.other_materials !== undefined) {
+      if (!Array.isArray(req.body.other_materials)) return res.status(400).json({ message: "other_materials must be an array." });
+      update["materials_used.other_materials"] = req.body.other_materials;
+    }
+    if (!Object.keys(update).length) return res.status(400).json({ message: "No material values supplied." });
+    const complaint = await Complaint.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true });
+    if (!complaint) return res.status(404).json({ message: "Complaint not found." });
+    return res.status(200).json({ success: true, data: complaint });
+  } catch (error) {
+    console.error("updateMaterialsUsed Error:", error);
+    return res.status(500).json({ message: "Failed to update material usage.", error: error.message });
+  }
+};
+
 // PATCH /api/complaints/:id/assign (Authority — Maintenance Command Center "Assign Team" modal)
 export const assignFieldTeam = async (req, res) => {
   try {
@@ -233,7 +290,7 @@ export const assignFieldTeam = async (req, res) => {
       {
         assigned_team_id: teamId,
         status: "ASSIGNED",
-        estimated_cost_inr: estimatedCostInr ?? undefined,
+        estimated_cost_inr: Number.isFinite(Number(estimatedCostInr)) ? Number(estimatedCostInr) : undefined,
       },
       { new: true }
     ).populate("assigned_department_id assigned_team_id");
@@ -297,11 +354,13 @@ export const submitRepairVerification = async (req, res) => {
 
     // Free the crew back up once verified so they show as AVAILABLE again
     if (verification.repaired && complaint.assigned_team_id) {
-      await FieldTeam.findByIdAndUpdate(complaint.assigned_team_id, {
-        status: "AVAILABLE",
-        currentWorkOrderId: null,
-        currentTask: "Standing by",
-      });
+      await FieldTeam.findByIdAndUpdate(
+        complaint.assigned_team_id,
+        {
+          $set: { status: "AVAILABLE", currentWorkOrderId: null, currentTask: "Standing by" },
+          $inc: { todayCompletedCount: 1 },
+        }
+      );
     }
 
     triggerClosedLoop(complaint, `complaint_verification_${newStatus.toLowerCase()}`);
@@ -318,7 +377,7 @@ export const detectDefectInternal = async (req, res) => {
     try {
         if(!req.file) return res.status(400).json({message: "Photo required"});
         const mlResult = await detectDefectViaML(req.file.path);
-        res.status(200).json({ success: true, data: mlResult });
+        res.status(mlResult.available === false ? 503 : 200).json({ success: mlResult.available !== false, data: mlResult });
     } catch(error) {
         res.status(500).json({ message: "ML Service Error" });
     }
