@@ -1,8 +1,12 @@
-﻿"""
+"""
 Unified Production Inference Engine for Prahari AI.
-Implements Two-Tier Hierarchical Vision Verification with Out-of-Distribution (OOD) Rejection:
-  - Tier 1: Deep Semantic Domain Gate (Filters out People, Screens, Indoor Objects, Animals, Food)
-  - Tier 2: Specialized Road Infrastructure Defect Classifier (Pothole, Streetlight, Garbage, Drainage)
+Uses CLIP (Contrastive Language-Image Pretraining) for zero-shot defect classification
+with robust out-of-distribution (OOD) rejection. CLIP was trained on 400M real image-text
+pairs and can accurately classify real-world photographs without task-specific training data.
+
+Previous approaches (MobileNetV2 trained on synthetic procedural drawings) failed on
+real-world photos because the synthetic training data was not representative of actual
+road defect imagery. CLIP eliminates this problem entirely.
 """
 
 import os
@@ -38,6 +42,7 @@ from src.repair_priority import RepairPriorityRankingModel
 from src.routing_integration import EmergencyRoutingEngine, compute_dynamic_edge_weight, evaluate_route_safety_profile
 from src.copilot_engine import AuthorityCopilotEngine
 from src.citizen_chatbot import CitizenChatbotEngine
+from src.clip_classifier import classify_image_clip
 
 DEFECT_CLASSES = ["Pothole", "Streetlight Defect", "Garbage Accumulation", "Drainage Issues", "Other / No Defect"]
 
@@ -49,33 +54,9 @@ DEPARTMENT_MAPPING = {
     "Other / No Defect": "None"
 }
 
-# =====================================================================
-# TIER 1: SEMANTIC OOD REJECTION RULES (ImageNet-1K Taxonomy)
-# =====================================================================
-ANIMAL_INDICES = set(range(0, 398))
-
-CLOTHING_KEYWORDS = {
-    "suit", "dress", "gown", "jersey", "trench_coat", "coat", "bikini", "abaya", "wig", 
-    "cloak", "bonnet", "hat", "cap", "sunglasses", "sunglass", "tie", "jean", "sweatshirt", 
-    "sock", "shoe", "sandal", "brassiere", "pajama", "kimono", "uniform", "vest", "apron",
-    "seat_belt", "maillot", "cardigan", "skirt", "turban", "sombrero", "cowboy_hat"
-}
-
-SCREEN_AND_TECH_KEYWORDS = {
-    "screen", "monitor", "television", "cash_machine", "cellular_telephone", "phone", "laptop", 
-    "computer", "notebook", "ipod", "mouse", "keyboard", "printer", "remote_control"
-}
-
-INDOOR_AND_FOOD_KEYWORDS = {
-    "table", "desk", "couch", "sofa", "bed", "wardrobe", "refrigerator", "microwave", 
-    "dishwasher", "oven", "toaster", "plate", "cup", "mug", "pizza", "bagel", "cheeseburger", 
-    "hotdog", "sandwich", "ice_cream", "pillow", "bookcase", "cabinet", "home_theater",
-    "candle", "table_lamp", "vase", "tub", "toilet", "washbasin", "soap_dispenser"
-}
-
 
 def build_mobilenetv2_model(num_classes: int = 5) -> nn.Module:
-    """Build MobileNetV2 architecture matching trained 5-class checkpoint."""
+    """Build MobileNetV2 architecture matching trained 5-class checkpoint (kept for duplicate detector embedding)."""
     model = models.mobilenet_v2(weights=None)
     in_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
@@ -91,7 +72,7 @@ def build_mobilenetv2_model(num_classes: int = 5) -> nn.Module:
 class RoadGuardInferenceEngine:
     """
     Master Production ML Engine for Prahari AI / RoadGuard AI.
-    Features Two-Tier Semantic Domain Filtering & Real-World Defect Classification.
+    Uses CLIP zero-shot classification for defect detection with robust OOD rejection.
     """
 
     def __init__(self,
@@ -101,20 +82,7 @@ class RoadGuardInferenceEngine:
         self.models_dir = os.path.join(root_dir, models_dir) if not os.path.isabs(models_dir) else models_dir
         self.device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu"))
 
-        # 1. Load Pretrained ImageNet Model for Tier 1 Semantic OOD Filtering
-        self.imagenet_backbone = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
-        self.imagenet_backbone.to(self.device)
-        self.imagenet_backbone.eval()
-
-        # Load ImageNet class taxonomy dict
-        tax_path = os.path.join(self.models_dir, "imagenet_class_index.json")
-        if os.path.exists(tax_path):
-            with open(tax_path, "r", encoding="utf-8") as f:
-                self.class_idx = json.load(f)
-        else:
-            self.class_idx = {}
-
-        # 2. Load Specialized Defect Model (Tier 2)
+        # 1. Load MobileNetV2 model (kept for duplicate detector image embedding only)
         cv_weights_path = os.path.join(self.models_dir, "defect_classifier_mobilenetv2.pt")
         self.cv_model = build_mobilenetv2_model(num_classes=5)
         if os.path.exists(cv_weights_path):
@@ -135,7 +103,7 @@ class RoadGuardInferenceEngine:
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        # 3. Load Tabular Risk Models and Preprocessor
+        # 2. Load Tabular Risk Models and Preprocessor
         xgb_path = os.path.join(self.models_dir, "risk_predictor_xgboost.joblib")
         rf_path = os.path.join(self.models_dir, "risk_predictor_rf.joblib")
         preproc_path = os.path.join(self.models_dir, "risk_preprocessor.joblib")
@@ -144,7 +112,7 @@ class RoadGuardInferenceEngine:
         self.rf_model = joblib.load(rf_path) if os.path.exists(rf_path) else None
         self.preprocessor = joblib.load(preproc_path) if os.path.exists(preproc_path) else None
 
-        # 4. Initialize Live Defect Spatial Index (cKDTree)
+        # 3. Initialize Live Defect Spatial Index (cKDTree)
         self.spatial_index = DefectSpatialIndex()
         if defects_data_path:
             full_defects_path = os.path.join(root_dir, defects_data_path) if not os.path.isabs(defects_data_path) else defects_data_path
@@ -156,7 +124,7 @@ class RoadGuardInferenceEngine:
                     active = df_defects.to_dict(orient="records")
                 self.spatial_index.build_index(active)
 
-        # 5. Initialize Subsystem Models
+        # 4. Initialize Subsystem Models
         self.duplicate_detector = DuplicateComplaintDetector(cv_model=self.cv_model, device=self.device)
         self.maintenance_forecaster = PredictiveMaintenanceForecaster()
         self.road_health_model = RoadHealthScoreModel()
@@ -166,147 +134,18 @@ class RoadGuardInferenceEngine:
         self.chatbot_engine = CitizenChatbotEngine(cv_classifier=self)
 
     # -------------------------------------------------------------
-    # TIER 1: SEMANTIC OOD REJECTION CHECK
-    # -------------------------------------------------------------
-    def check_semantic_ood(self, tensor: torch.Tensor) -> Tuple[bool, str]:
-        """
-        Check if image is an Out-of-Distribution non-defect concept (Person, Screen, Indoor, Animal).
-        Returns: (is_ood: bool, rejection_reason: str)
-        """
-        if not self.class_idx:
-            return False, ""
-
-        with torch.no_grad():
-            out = self.imagenet_backbone(tensor)
-            probs = torch.softmax(out, dim=1).squeeze(0)
-            top5 = torch.topk(probs, 5)
-
-        top_indices = [top5.indices[i].item() for i in range(5)]
-        top_labels = [self.class_idx.get(str(idx), ["", "unknown"])[1] for idx in top_indices]
-        top_probs = [top5.values[i].item() for i in range(5)]
-
-        top1_idx = top_indices[0]
-        top1_lbl = top_labels[0].lower()
-
-        # Check 1: Animal
-        if top1_idx in ANIMAL_INDICES:
-            return True, f"Animal detected: '{top_labels[0]}' ({top_probs[0]*100:.1f}%)"
-
-        # Check 2: Clothing / Apparel / People
-        for lbl in top_labels[:3]:
-            lbl_clean = lbl.lower()
-            if any(kw in lbl_clean for kw in CLOTHING_KEYWORDS):
-                return True, f"Person / Apparel detected: '{lbl}'"
-
-        # Check 3: Screen / Monitor / Electronics
-        for lbl in top_labels[:3]:
-            lbl_clean = lbl.lower()
-            if any(kw in lbl_clean for kw in SCREEN_AND_TECH_KEYWORDS):
-                return True, f"Screen / Electronics detected: '{lbl}'"
-
-        # Check 4: Indoor Furniture / Food
-        for lbl in top_labels[:2]:
-            lbl_clean = lbl.lower()
-            if any(kw in lbl_clean for kw in INDOOR_AND_FOOD_KEYWORDS) and not ("street" in lbl_clean or "pole" in lbl_clean):
-                return True, f"Indoor / Household object detected: '{lbl}'"
-
-        return False, ""
-
-    # -------------------------------------------------------------
-    # MODEL 1 & 2: DEFECT DETECTION & SEVERITY ESTIMATION
+    # MODEL 1 & 2: DEFECT DETECTION & SEVERITY ESTIMATION (CLIP)
     # -------------------------------------------------------------
     def predict_defect(self, image_input: Union[str, bytes, Image.Image]) -> Dict[str, Any]:
         """
-        Two-Tier Vision Model:
-          Tier 1: Semantic OOD Domain Gate
-          Tier 2: Specialized Defect Classifier (Pothole, Streetlight, Garbage, Drainage)
+        CLIP Zero-Shot Defect Classification with Built-in OOD Rejection.
+        
+        Uses OpenAI's CLIP model (trained on 400M real image-text pairs) to compare
+        the uploaded image against text descriptions of road defects and non-defect
+        concepts. If the image is most similar to non-defect descriptions, it is
+        rejected — handling clean roads, people, screens, indoor scenes, etc.
         """
-        if isinstance(image_input, str):
-            image = Image.open(image_input).convert("RGB")
-        elif isinstance(image_input, bytes):
-            image = Image.open(io.BytesIO(image_input)).convert("RGB")
-        elif isinstance(image_input, Image.Image):
-            image = image_input.convert("RGB")
-        else:
-            raise ValueError(f"Unsupported image input type: {type(image_input)}")
-
-        tensor = self.img_transform(image).unsqueeze(0).to(self.device)
-
-        # -------------------------------------------------------------
-        # TIER 1: SEMANTIC OOD FILTER
-        # -------------------------------------------------------------
-        is_ood, ood_reason = self.check_semantic_ood(tensor)
-        if is_ood:
-            return {
-                "defect_type": "Other / No Defect",
-                "is_valid_defect": False,
-                "confidence_score": 99.5,
-                "confidence": 0.995,
-                "severity": "NONE",
-                "severity_estimate": "NONE",
-                "probabilities": {
-                    "Pothole": 0.0,
-                    "Streetlight Defect": 0.0,
-                    "Garbage Accumulation": 0.0,
-                    "Drainage Issues": 0.0,
-                    "Other / No Defect": 0.995
-                },
-                "department_assigned": "None",
-                "ai_verification_status": "REJECTED_NON_DEFECT",
-                "rejection_reason": ood_reason,
-                "message": f"Non-defect upload rejected ({ood_reason}). Skipped risk and routing calculation."
-            }
-
-        # -------------------------------------------------------------
-        # TIER 2: SPECIALIZED ROAD DEFECT CLASSIFIER
-        # -------------------------------------------------------------
-        with torch.no_grad():
-            outputs = self.cv_model(tensor)
-            probabilities = torch.softmax(outputs, dim=1).squeeze(0).cpu().numpy()
-
-        top_idx = int(np.argmax(probabilities))
-        top_class = self.idx_to_class[top_idx]
-        confidence = float(probabilities[top_idx])
-
-        # Check if Tier 2 flags as Other / No Defect
-        if top_class == "Other / No Defect" or confidence < 0.50:
-            return {
-                "defect_type": "Other / No Defect",
-                "is_valid_defect": False,
-                "confidence_score": round(confidence * 100.0, 2),
-                "confidence": round(confidence, 4),
-                "severity": "NONE",
-                "severity_estimate": "NONE",
-                "probabilities": {self.idx_to_class[i]: round(float(probabilities[i]), 4) for i in range(len(self.classes))},
-                "department_assigned": "None",
-                "ai_verification_status": "REJECTED_NON_DEFECT",
-                "rejection_reason": "Low defect confidence or normal undamaged road surface",
-                "message": "No municipal road defect detected. Image rejected from risk and routing calculations."
-            }
-
-        # Severity Estimation Logic for Valid Defects
-        if confidence > 0.90:
-            severity = "CRITICAL" if top_class in ["Pothole", "Drainage Issues"] else "HIGH"
-        elif confidence > 0.70:
-            severity = "HIGH" if top_class == "Pothole" else "MEDIUM"
-        else:
-            severity = "MEDIUM"
-
-        prob_dict = {self.idx_to_class[i]: round(float(probabilities[i]), 4) for i in range(len(self.classes))}
-
-        return {
-            "defect_type": top_class,
-            "is_valid_defect": True,
-            "confidence_score": round(confidence * 100.0, 2),
-            "confidence": round(confidence, 4),
-            "severity": severity,
-            "severity_estimate": severity,
-            "probabilities": prob_dict,
-            "department_assigned": DEPARTMENT_MAPPING.get(top_class, "PWD_Road_Maintenance"),
-            "ai_verification_status": "AI_VERIFIED",
-            "rejection_reason": None,
-            "message": "Valid road defect verified and assigned to municipal department."
-        }
+        return classify_image_clip(image_input)
 
     # -------------------------------------------------------------
     # MODEL 3: DUPLICATE COMPLAINT DETECTOR
