@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AppShell } from './layouts/AppShell';
 import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { authService, ROLE_PRESETS } from './services/authService';
 
@@ -51,6 +52,7 @@ export function App() {
       <Routes>
         {/* Standalone Authentication Command Center Entry */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         {/* Protected Application Workspace Shell */}
         <Route

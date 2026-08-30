@@ -2,14 +2,18 @@ import express from "express";
 import multer from "multer";
 import { 
   createComplaint,
+  createWorkOrder,
   getMyComplaints,
   getComplaintById,
   getComplaintDuplicates,
   getAllComplaints,
   updateComplaintStatus,
+  assignFieldTeam,
+  submitRepairVerification,
   detectDefectInternal,
   checkDuplicateInternal,
-  getDepartments
+  getDepartments,
+  updateMaterialsUsed
 } from "../controllers/complaints.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 
@@ -26,6 +30,7 @@ router.get("/me", protect, getMyComplaints);
 // AUTHORITY ROUTES
 // ==========================================
 // Must be defined before /:id so it doesn't clash
+router.post("/work-order", protect, createWorkOrder);
 router.get("/", protect, getAllComplaints);
 
 // ==========================================
@@ -34,5 +39,14 @@ router.get("/", protect, getAllComplaints);
 router.get("/:id", protect, getComplaintById);
 router.get("/:id/duplicates", protect, getComplaintDuplicates);
 router.patch("/:id/status", protect, updateComplaintStatus);
+
+// Field Operations: persist material usage
+router.patch("/:id/materials", protect, updateMaterialsUsed);
+
+// Field Operations: Maintenance Command Center assigns a squad to a work order
+router.patch("/:id/assign", protect, assignFieldTeam);
+
+// Field Operations: Field Worker Mobile App submits the after-repair photo for AI verification
+router.post("/:id/verify", protect, upload.single("afterPhoto"), submitRepairVerification);
 
 export default router;

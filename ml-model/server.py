@@ -36,6 +36,32 @@ async def predict_defect_api(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@app.post("/verify_repair")
+async def verify_repair_api(file: UploadFile = File(...)):
+    """
+    Feeds: POST /api/complaints/:id/verify (Node.js backend).
+    Runs the after-repair photo back through the defect classifier. If the
+    model no longer sees a strong defect signal, the repair is considered verified.
+    """
+    try:
+        image_bytes = await file.read()
+        result = detect_defect(image_bytes)
+        residual_confidence = result.get("confidence_score", 0)
+        repaired = residual_confidence < 40  # low residual defect confidence => surface looks clear
+
+        return JSONResponse(content={
+            "repaired": repaired,
+            "residual_defect_type": result.get("defect_type"),
+            "residual_confidence": residual_confidence,
+            "message": (
+                "Repair verified: no significant defect detected on re-scan."
+                if repaired else
+                f"Defect still detected ({result.get('defect_type')}, {residual_confidence}% confidence) — sending to inspection queue."
+            )
+        })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 @app.post("/predict_risk")
 async def predict_risk_api(payload: dict = Body(...)):
     """
@@ -68,6 +94,10 @@ async def get_emergency_route(payload: dict = Body(...)):
         dest_lat = hosp_loc.get("lat")
         dest_lng = hosp_loc.get("lng")
         
+        osrm_routes = payload.get("osrm_routes", None)
+        potholes = payload.get("potholes", [])
+        blockages = payload.get("blockages", [])
+        
         if not start_lat or not start_lng:
             return JSONResponse(status_code=400, content={"error": "accident_location required"})
             
@@ -75,20 +105,30 @@ async def get_emergency_route(payload: dict = Body(...)):
             start_lat=start_lat,
             start_lng=start_lng,
             dest_lat=dest_lat,
-            dest_lng=dest_lng
+            dest_lng=dest_lng,
+            osrm_routes=osrm_routes,
+            potholes=potholes,
+            blockages=blockages
         )
         
         # Format response to match expected frontend structure (from models.py structure)
         # fastest_route is ROUTE-A-DIRECT, safest_route is ROUTE-B-BYPASS
         direct_route = next((r for r in result["candidate_routes"] if "DIRECT" in r["route_id"]), result["candidate_routes"][0])
         bypass_route = next((r for r in result["candidate_routes"] if "BYPASS" in r["route_id"]), result["candidate_routes"][-1])
-        
+
+        def format_coords(coords):
+            if not coords: return []
+            if isinstance(coords[0], dict): return coords
+            return [{"lat": c[0], "lng": c[1]} for c in coords]
+
         formatted_result = {
             "recommended_route_type": "safest" if "BYPASS" in result["recommended_route_id"] else "fastest",
-            "fastest_route_coords": [{"lat": c[0], "lng": c[1]} for c in direct_route["path_coordinates"]],
+            "fastest_route_coords": format_coords(direct_route["path_coordinates"]),
             "fastest_route_eta_mins": direct_route["eta_minutes"],
-            "safest_route_coords": [{"lat": c[0], "lng": c[1]} for c in bypass_route["path_coordinates"]],
+            "fastest_route_distance": direct_route.get("physical_distance_m", 0) / 1000.0,
+            "safest_route_coords": format_coords(bypass_route["path_coordinates"]),
             "safest_route_eta_mins": bypass_route["eta_minutes"],
+            "safest_route_distance": bypass_route.get("physical_distance_m", 0) / 1000.0,
             "safest_route_pothole_count": bypass_route["pothole_defect_count"],
             "safest_route_avg_risk": bypass_route["average_risk_score"]
         }

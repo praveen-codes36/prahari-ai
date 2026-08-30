@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Zap, ShieldCheck, Sparkles, Radio, Activity, Globe, Lock } from 'lucide-react';
+import { Zap, ShieldCheck, Sparkles, Radio, Activity, Globe, Lock, CheckCircle2 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { InfrastructureMap } from '../../components/auth/InfrastructureMap';
 import { RoleSelector } from '../../components/auth/RoleSelector';
@@ -12,6 +12,9 @@ import { ROLE_PRESETS, authService } from '../../services/authService';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = (location.state || {}) as { registrationSuccess?: boolean; registeredEmail?: string };
+  const registrationSuccess = Boolean(locationState.registrationSuccess);
+  const registeredEmail = locationState.registeredEmail;
 
   // If already authenticated and visiting /login directly, allow quick entry or stay to switch
   const [selectedRole, setSelectedRole] = useState<UserRole>('authority');
@@ -103,6 +106,20 @@ export const LoginPage: React.FC = () => {
 
             {/* Header / System Access Title */}
             <div className="space-y-1">
+              {registrationSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-mono font-bold uppercase text-[10px] text-emerald-400">
+                      REGISTRATION SUCCESSFUL
+                    </div>
+                    <div className="text-[11px] mt-0.5">
+                      Account created{registeredEmail ? ` for ${registeredEmail}` : ''}. Please sign in.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-500/30 text-[10px] font-mono text-[#00e3fd] uppercase tracking-wider">
                   <Sparkles className="w-3 h-3" />

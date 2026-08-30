@@ -38,7 +38,7 @@ export interface AIDefectAnalysis {
   severity: SeverityLevel;
   estimatedDepth?: string;
   estimatedDimensions?: string;
-  riskScore: number;
+  riskScore: number | null;
   departmentRouting: string;
   priorityLevel: 'P1' | 'P2' | 'P3' | 'P4';
   potentialDuplicate?: {
@@ -130,7 +130,7 @@ export interface PriorityQueueItem {
     severityIndex: { score: number; text: string };
     locationRisk: { score: number; text: string };
     accidentCorrelation: { score: number; text: string };
-    vulnerabilityIndex: { score: number; text: string };
+    trafficImpact: { score: number; text: string };
   };
   recommendedAction: string;
   allocatedDepartment: string;
@@ -194,7 +194,7 @@ export interface EmergencyIncident {
   coordinates: { lat: number; lng: number };
   detectedTime: string;
   severity: SeverityLevel;
-  riskScore: number;
+  riskScore: number | null;
   status: 'Awaiting Dispatch' | 'Dispatched' | 'On Scene' | 'Secured' | 'Resolved';
   impactLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   affectedLanes: number;
@@ -248,7 +248,7 @@ export interface MaintenanceWorkOrder {
   defectType: DefectType;
   department: string;
   priority: 'P1' | 'P2' | 'P3' | 'P4';
-  riskScore: number;
+  riskScore: number | null;
   status: 'Assigned' | 'En Route' | 'On Site' | 'Repairing' | 'Inspection' | 'Completed';
   crewName: string;
   teamId?: string;
@@ -266,6 +266,20 @@ export interface MaintenanceWorkOrder {
   aiVerificationNotes?: string;
   repairInstructions?: string[];
   depthMeasurementCm?: number;
+  materialsUsed?: {
+    coldMixBags: number;
+    asphaltKg: number;
+    concreteKg: number;
+    compactorMinutes: number;
+    otherMaterials: { name: string; quantity: number; unit: string }[];
+  };
+  aiRecommendation?: {
+    material: string;
+    materialKg: number | null;
+    safetyZoneM: number | null;
+    notes: string;
+    available: boolean;
+  };
 }
 
 // Predictive Infrastructure Asset

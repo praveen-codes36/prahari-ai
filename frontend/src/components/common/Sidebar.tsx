@@ -24,12 +24,51 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
+import apiClient from '../../services/apiClient';
+
 interface SidebarProps {
   currentRole: UserRole;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
   const navigate = useNavigate();
+  const [counts, setCounts] = useState({
+    alerts: 0,
+    accidents: 0,
+    complaints: 0,
+    teams: 0,
+    workOrders: 0,
+  });
+
+  React.useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [alertsRes, accRes, compRes] = await Promise.allSettled([
+          apiClient.get('/alerts/active'),
+          apiClient.get('/accidents'),
+          apiClient.get('/complaints'),
+        ]);
+
+        const alertCount = alertsRes.status === 'fulfilled' && alertsRes.value.data?.data ? (Array.isArray(alertsRes.value.data.data) ? alertsRes.value.data.data.length : 0) : 0;
+        const accCount = accRes.status === 'fulfilled' && accRes.value.data?.data ? (Array.isArray(accRes.value.data.data) ? accRes.value.data.data.length : 0) : 0;
+        const compCount = compRes.status === 'fulfilled' && compRes.value.data?.data ? (Array.isArray(compRes.value.data.data) ? compRes.value.data.data.length : 0) : 0;
+
+        setCounts({
+          alerts: alertCount,
+          accidents: accCount,
+          complaints: compCount,
+          teams: 4,
+          workOrders: 12,
+        });
+      } catch {
+        // Fallback gracefully
+      }
+    };
+
+    fetchCounts();
+    const timer = setInterval(fetchCounts, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   const navigationGroups = [
     {
@@ -37,8 +76,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
       items: [
         { name: 'Overview', path: '/authority', icon: LayoutDashboard, exact: true, badge: null },
         { name: 'AI Risk Smart System', path: '/authority/risk-intel', icon: Cpu, badge: 'SURGE' },
-        { name: 'AI Repair Priority', path: '/authority/priority', icon: AlertOctagon, badge: 'P1 (07)' },
-        { name: 'Complaints Priority Check', path: '/authority/complaints', icon: ClipboardList, badge: '14 New' },
+        { name: 'AI Repair Priority', path: '/authority/priority', icon: AlertOctagon, badge: 'P1' },
+        { name: 'Complaints Priority Check', path: '/authority/complaints', icon: ClipboardList, badge: counts.complaints > 0 ? `${counts.complaints} New` : null },
         { name: 'Road Health Analytics', path: '/authority/road-health', icon: Activity, badge: null },
         { name: 'AI Copilot Assistant', path: '/authority/copilot', icon: Bot, badge: 'ONLINE' },
       ],
@@ -46,18 +85,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
     {
       label: 'OPERATIONS & EMERGENCY',
       items: [
-        { name: 'Emergency Response Ops', path: '/authority/emergency-ops', icon: Radio, badge: '3 ACTIVE', highlight: true },
+        { name: 'Emergency Response Ops', path: '/authority/emergency-ops', icon: Radio, badge: counts.accidents > 0 ? `${counts.accidents} ACTIVE` : null, highlight: true },
         { name: 'Emergency Routes', path: '/authority/emergency-routes', icon: Navigation, badge: null },
         { name: 'Incident Simulation', path: '/authority/simulation', icon: FlaskConical, badge: null },
         { name: 'Global Risk Map', path: '/authority/global-map', icon: Globe2, badge: null },
-        { name: 'System Alerts', path: '/authority/alerts', icon: Bell, badge: '4' },
+        { name: 'System Alerts', path: '/authority/alerts', icon: Bell, badge: counts.alerts > 0 ? String(counts.alerts) : null },
       ],
     },
     {
       label: 'FIELD OPERATIONS',
       items: [
-        { name: 'Maintenance Command', path: '/authority/maintenance-command', icon: Wrench, badge: '42 Orders' },
-        { name: 'Field Teams', path: '/authority/field-teams', icon: Truck, badge: '16 Live' },
+        { name: 'Maintenance Command', path: '/authority/maintenance-command', icon: Wrench, badge: null },
+        { name: 'Field Teams', path: '/authority/field-teams', icon: Truck, badge: 'Live' },
         { name: 'Work Orders System', path: '/authority/work-orders', icon: FileCheck2, badge: null },
         { name: 'Field Worker Mobile App', path: '/authority/field-app', icon: Smartphone, badge: 'SQUAD' },
       ],

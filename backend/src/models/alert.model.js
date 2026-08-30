@@ -31,6 +31,11 @@ const alertSchema = new Schema(
         is_simulated: {
             type: Boolean,
             default: false // true for hackathon demo data
+        },
+        status: {
+            type: String,
+            enum: ['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED'],
+            default: 'ACTIVE'
         }
     },
     {

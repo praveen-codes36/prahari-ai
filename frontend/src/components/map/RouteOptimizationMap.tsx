@@ -1,149 +1,225 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Shield, Radio, Navigation, CheckCircle2, AlertTriangle, Hospital, Flame } from 'lucide-react';
 import { EmergencyRouteOption } from '../../types';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+interface HazardPothole {
+  location: { lat: number, lng: number };
+  severity: string;
+}
+
+interface HazardBlockage {
+  location: { lat: number, lng: number };
+  reason: string;
+}
 
 interface RouteOptimizationMapProps {
   selectedRouteId: 'A' | 'B' | 'C';
   onSelectRoute: (id: 'A' | 'B' | 'C') => void;
   routes: EmergencyRouteOption[];
+  origin?: { lat: number, lng: number };
+  destination?: { lat: number, lng: number };
+  accidentCoords?: { lat: number, lng: number };
+  routeACoords?: { lat: number, lng: number }[];
+  routeBCoords?: { lat: number, lng: number }[];
+  originCallsign?: string;
+  destinationName?: string;
+  hazards?: { potholes: HazardPothole[], blockages: HazardBlockage[] };
 }
+
+const MapRecenter = ({ center }: { center: { lat: number, lng: number } }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center.lat && center.lng) {
+      map.setView([center.lat, center.lng], 13);
+    }
+  }, [center, map]);
+  return null;
+};
+
+// Custom Icons
+const potholeIcon = L.divIcon({
+  className: 'custom-map-icon',
+  html: `
+    <div class="relative flex flex-col items-center group">
+      <div class="w-6 h-6 rounded-full bg-orange-500 border-2 border-white text-white flex items-center justify-center shadow-[0_0_10px_rgba(249,115,22,0.8)] z-10 transition-transform group-hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const blockageIcon = L.divIcon({
+  className: 'custom-map-icon',
+  html: `
+    <div class="relative flex flex-col items-center group">
+      <div class="w-6 h-6 rounded-md bg-purple-600 border-2 border-white text-white flex items-center justify-center shadow-[0_0_10px_rgba(147,51,234,0.8)] z-10 transition-transform group-hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const originIcon = L.divIcon({
+  className: 'custom-map-icon',
+  html: `
+    <div class="relative flex flex-col items-center group">
+      <div class="w-8 h-8 rounded-full bg-cyan-500 border-2 border-white text-[#001738] flex items-center justify-center shadow-[0_0_15px_rgba(0,227,253,0.8)] z-10 transition-transform group-hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+const destIcon = L.divIcon({
+  className: 'custom-map-icon',
+  html: `
+    <div class="relative flex flex-col items-center group">
+      <div class="w-9 h-9 rounded-lg bg-emerald-600 border-2 border-white text-white flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.8)] z-10 transition-transform group-hover:scale-110">
+         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v4"/><path d="M14 14h-4"/><path d="M14 18h-4"/><path d="M14 8h-4"/><path d="M18 12h2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4h2"/><path d="M18 22V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16"/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+const accidentIcon = L.divIcon({
+  className: 'custom-map-icon',
+  html: `
+    <div class="relative flex items-center justify-center">
+      <div class="absolute w-12 h-12 rounded-full bg-red-500/30 animate-ping"></div>
+      <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.8)] z-10">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 
 export const RouteOptimizationMap: React.FC<RouteOptimizationMapProps> = ({
   selectedRouteId,
   onSelectRoute,
   routes,
+  origin,
+  destination,
+  accidentCoords,
+  routeACoords,
+  routeBCoords,
+  originCallsign,
+  destinationName,
+  hazards
 }) => {
+  const defaultCenter = { lat: 25.4358, lng: 81.8463 };
+  
   return (
-    <div className="relative w-full h-[420px] lg:h-[500px] bg-[#080e1d] rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-      {/* Dark Tactical Grid Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-45 mix-blend-luminosity"
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1600&q=80')`,
-        }}
-      />
-      <div className="absolute inset-0 bg-[#0d1322]/70" />
-      <div className="absolute inset-0 grid-pattern-dense opacity-40" />
-
-      {/* SVG Vector Paths for Routes */}
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 500" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="routeAGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff5252" />
-            <stop offset="100%" stopColor="#ffb4ab" />
-          </linearGradient>
-          <linearGradient id="routeBGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#00daf3" />
-            <stop offset="100%" stopColor="#bdf4ff" />
-          </linearGradient>
-          <linearGradient id="routeCGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffa000" />
-            <stop offset="100%" stopColor="#ffd180" />
-          </linearGradient>
-          <filter id="glowA">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="glowB">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {/* Route C Path (Outer Bypass) */}
-        <path
-          d="M 120 400 Q 220 450 420 420 T 700 130"
-          fill="none"
-          stroke="url(#routeCGrad)"
-          strokeWidth={selectedRouteId === 'C' ? '5' : '3'}
-          strokeDasharray={selectedRouteId === 'C' ? 'none' : '4 4'}
-          opacity={selectedRouteId === 'C' ? 1 : 0.4}
-          className="cursor-pointer transition-all hover:opacity-100"
-          onClick={() => onSelectRoute('C')}
+    <div className="relative w-full h-[420px] lg:h-[500px] bg-[#080e1d] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl z-0">
+      <MapContainer 
+        center={origin ? [origin.lat, origin.lng] : [defaultCenter.lat, defaultCenter.lng]} 
+        zoom={13} 
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; OpenStreetMap'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          className="opacity-90"
         />
+        {origin && <MapRecenter center={origin} />}
+        
+        {/* Origin Marker */}
+        {origin && (
+           <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
+              <Popup className="custom-popup">
+                 <div className="p-1 min-w-[120px]">
+                   <div className="text-[10px] font-mono text-cyan-500 font-bold mb-1">ORIGIN</div>
+                   <div className="text-sm font-bold text-slate-800 leading-tight">{originCallsign || 'EMS Unit'}</div>
+                 </div>
+              </Popup>
+           </Marker>
+        )}
+        
+        {/* Destination Marker */}
+        {destination && (
+           <Marker position={[destination.lat, destination.lng]} icon={destIcon}>
+              <Popup className="custom-popup">
+                 <div className="p-1 min-w-[120px]">
+                   <div className="text-[10px] font-mono text-emerald-500 font-bold mb-1">DESTINATION</div>
+                   <div className="text-sm font-bold text-slate-800 leading-tight">{destinationName || 'Hospital'}</div>
+                 </div>
+              </Popup>
+           </Marker>
+        )}
+        
+        {/* Accident Marker */}
+        {accidentCoords && (
+           <Marker position={[accidentCoords.lat, accidentCoords.lng]} icon={accidentIcon}>
+              <Popup className="custom-popup">
+                 <div className="p-1 min-w-[120px]">
+                   <div className="text-[10px] font-mono text-red-500 font-bold mb-1">INCIDENT SITE</div>
+                 </div>
+              </Popup>
+           </Marker>
+        )}
 
-        {/* Route A Path (Shortest Direct with Bottleneck) */}
-        <path
-          d="M 120 400 Q 300 320 450 260 T 700 130"
-          fill="none"
-          stroke="url(#routeAGrad)"
-          strokeWidth={selectedRouteId === 'A' ? '6' : '3.5'}
-          strokeDasharray={selectedRouteId === 'A' ? 'none' : '6 4'}
-          opacity={selectedRouteId === 'A' ? 1 : 0.45}
-          filter={selectedRouteId === 'A' ? 'url(#glowA)' : undefined}
-          className="cursor-pointer transition-all hover:opacity-100"
-          onClick={() => onSelectRoute('A')}
-        />
-
-        {/* Route B Path (Recommended AI Green Corridor with Animated Pulse) */}
-        <path
-          d="M 120 400 Q 250 180 480 180 T 700 130"
-          fill="none"
-          stroke="url(#routeBGrad)"
-          strokeWidth={selectedRouteId === 'B' ? '7' : '4'}
-          opacity={selectedRouteId === 'B' ? 1 : 0.6}
-          filter="url(#glowB)"
-          className="cursor-pointer transition-all hover:opacity-100"
-          onClick={() => onSelectRoute('B')}
-        />
-
-        {/* Animated Green Wave Pulse Particles along Route B */}
-        <circle r="4" fill="#00daf3" className="filter drop-shadow-[0_0_8px_#00daf3]">
-          <animateMotion
-            path="M 120 400 Q 250 180 480 180 T 700 130"
-            dur="4s"
-            repeatCount="indefinite"
+        {/* Polylines for Routes */}
+        {routeACoords && routeACoords.length > 0 && (
+          <Polyline 
+            key={`route-A-${selectedRouteId}`}
+            positions={routeACoords.map(coord => [coord.lat, coord.lng])} 
+            color={selectedRouteId === 'A' ? "#ff5252" : "#888"}
+            weight={selectedRouteId === 'A' ? 6 : 3}
+            opacity={selectedRouteId === 'A' ? 1 : 0.4}
+            dashArray={selectedRouteId === 'A' ? "0" : "5, 10"}
           />
-        </circle>
-        <circle r="3" fill="#bdf4ff">
-          <animateMotion
-            path="M 120 400 Q 250 180 480 180 T 700 130"
-            dur="4s"
-            begin="1.5s"
-            repeatCount="indefinite"
+        )}
+        
+        {routeBCoords && routeBCoords.length > 0 && (
+          <Polyline 
+            key={`route-B-${selectedRouteId}`}
+            positions={routeBCoords.map(coord => [coord.lat, coord.lng])} 
+            color={selectedRouteId === 'B' ? "#00daf3" : "#888"}
+            weight={selectedRouteId === 'B' ? 7 : 3}
+            opacity={selectedRouteId === 'B' ? 1 : 0.4}
+            dashArray={selectedRouteId === 'B' ? "0" : "5, 10"}
           />
-        </circle>
-      </svg>
+        )}
 
-      {/* Origin Node: Ambulance / EMS Unit */}
-      <div className="absolute bottom-16 left-16 z-20 flex flex-col items-center">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-[#0066ff]/20 animate-ping absolute" />
-          <div className="w-10 h-10 rounded-full bg-[#0066ff] border-2 border-white flex items-center justify-center text-white shadow-[0_0_15px_#0066ff]">
-            <Radio className="w-5 h-5" />
-          </div>
-        </div>
-        <div className="mt-1 bg-[#151b2b]/90 border border-[#b3c5ff]/40 px-2 py-0.5 rounded text-[10px] font-mono text-[#b3c5ff]">
-          ORIGIN: UNIT EMS-42
-        </div>
-      </div>
+        {hazards?.potholes?.map((p, i) => (
+          <Marker 
+            key={`pothole-${i}`} 
+            position={[p.location.lat, p.location.lng]} 
+            icon={potholeIcon}
+          >
+            <Popup className="custom-popup">
+              <div className="font-bold text-orange-500">Hazard: Pothole</div>
+              <div className="text-xs text-slate-300">Severity: {p.severity}</div>
+            </Popup>
+          </Marker>
+        ))}
 
-      {/* Destination Node: Apollo / AIIMS Trauma Center */}
-      <div className="absolute top-16 right-16 z-20 flex flex-col items-center">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/20 animate-ping absolute" />
-          <div className="w-10 h-10 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center text-white shadow-[0_0_15px_#10b981]">
-            <Hospital className="w-5 h-5" />
-          </div>
-        </div>
-        <div className="mt-1 bg-[#151b2b]/90 border border-emerald-500/40 px-2 py-0.5 rounded text-[10px] font-mono text-emerald-300">
-          DESTINATION: TRAUMA HQ
-        </div>
-      </div>
-
-      {/* Bottleneck Marker on Route A */}
-      <div className="absolute top-[52%] left-[45%] z-20 flex items-center gap-1.5 bg-[#93000a]/90 border border-[#ffb4ab]/50 px-2 py-1 rounded shadow-xl backdrop-blur-md">
-        <AlertTriangle className="w-3.5 h-3.5 text-[#ffb4ab] animate-pulse" />
-        <span className="text-[10px] font-mono text-[#ffdad6] font-bold">
-          ROUTE A HAZARD: ROADWORK & SUBSIDENCE
-        </span>
-      </div>
+        {hazards?.blockages?.map((b, i) => (
+          <Marker 
+            key={`blockage-${i}`} 
+            position={[b.location.lat, b.location.lng]} 
+            icon={blockageIcon}
+          >
+            <Popup className="custom-popup">
+              <div className="font-bold text-purple-500">Hazard: Roadblock</div>
+              <div className="text-xs text-slate-300">Reason: {b.reason}</div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
 
       {/* Interactive Floating Route Selector Overlay */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
@@ -152,7 +228,7 @@ export const RouteOptimizationMap: React.FC<RouteOptimizationMapProps> = ({
           return (
             <button
               key={route.id}
-              onClick={() => onSelectRoute(route.id)}
+              onClick={() => onSelectRoute(route.id as 'A' | 'B' | 'C')}
               className={`px-3 py-1.5 rounded-lg font-mono text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg backdrop-blur-md border ${
                 isSelected
                   ? route.isRecommended
@@ -174,7 +250,7 @@ export const RouteOptimizationMap: React.FC<RouteOptimizationMapProps> = ({
       {/* Data Info Live Badge */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#151b2b]/90 backdrop-blur-md border border-white/10 text-[10px] font-mono text-[#8c90a1]">
         <span className="w-2 h-2 rounded-full bg-[#00daf3] animate-pulse"></span>
-        SIGNAL PREEMPTION: 9 NODES ARMED
+        SIGNAL PREEMPTION: {routes.find(r => r.id === selectedRouteId)?.signalPreemptionNodes || 0} NODES ARMED
       </div>
     </div>
   );
