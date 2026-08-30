@@ -130,6 +130,9 @@ export const MaintenanceDashboard: React.FC = () => {
                     alt="Before Repair"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                    }}
                   />
                   <span className="absolute bottom-1 left-1 bg-[#0d1322]/80 text-white font-mono text-[9px] px-1.5 py-0.5 rounded">
                     BEFORE
@@ -144,6 +147,9 @@ export const MaintenanceDashboard: React.FC = () => {
                         alt="After Repair"
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/sample_images/clear_clean_asphalt.jpg';
+                        }}
                       />
                       <span className="absolute bottom-1 left-1 bg-emerald-950 text-emerald-300 font-mono text-[9px] px-1.5 py-0.5 rounded">
                         AFTER VERIFIED

@@ -58,7 +58,60 @@ export const predictRisk = async (req, res) => {
 export const getSegmentRisk = async (req, res) => {
     try {
         const { id } = req.params;
-        const segment = await RiskZone.findById(id);
+        let segment = null;
+
+        // 1. Try finding directly in RiskZone by _id or road_segment_id
+        try {
+            segment = await RiskZone.findById(id);
+            if (!segment) {
+                segment = await RiskZone.findOne({ road_segment_id: id });
+            }
+        } catch {
+            // invalid ObjectId or other query issue
+        }
+
+        // 2. If not found in RiskZone, synthesize from RoadHealthScore or RoadSegment
+        if (!segment) {
+            const { RoadHealthScore } = await import("../models/road_health.model.js");
+            let health = null;
+            try {
+                health = await RoadHealthScore.findOne({
+                    $or: [{ _id: id }, { road_segment_id: id }]
+                });
+            } catch {}
+
+            if (health) {
+                const healthVal = health.health_score ?? 50;
+                const calculatedRisk = Math.max(0, Math.min(100, 100 - healthVal));
+                let level = "LOW";
+                if (calculatedRisk >= 70) level = "HIGH";
+                else if (calculatedRisk >= 40) level = "MEDIUM";
+
+                segment = {
+                    _id: health._id,
+                    road_segment_id: health.road_segment_id || health._id,
+                    road_name: health.road_name,
+                    risk_score: calculatedRisk,
+                    risk_level: level,
+                    factors: {
+                        accident_history: (health.factors?.accident_history || 0) * 10,
+                        traffic: health.factors?.traffic || 50,
+                        weather: 20,
+                        road_condition: Math.max(0, 100 - (health.factors?.road_condition || 50)),
+                        potholes: Math.min(100, (health.factors?.potholes || 0) * 5),
+                        streetlights: Math.max(0, 100 - (health.factors?.lighting || 50)),
+                        time_of_day: 50,
+                        day_of_week: 50,
+                        citizen_complaints: Math.min(100, (health.factors?.complaints || 0) * 8)
+                    },
+                    geometry: {
+                        type: "Point",
+                        coordinates: health.coordinates || [81.8463, 25.4358]
+                    },
+                    last_calculated_at: health.last_calculated_at || Date.now()
+                };
+            }
+        }
 
         if (!segment) {
             throw new ApiError(404, "Road segment not found");

@@ -289,6 +289,9 @@ export const ComplaintsManagement: React.FC = () => {
                   alt={selectedReport.title}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                  }}
                 />
               </div>
 

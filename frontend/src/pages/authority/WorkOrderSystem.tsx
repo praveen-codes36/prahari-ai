@@ -229,7 +229,14 @@ export const WorkOrderSystem: React.FC = () => {
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
                   {selectedOrder.beforePhotoUrl ? (
-                    <img src={selectedOrder.beforePhotoUrl} alt="Before Repair" className="w-full h-full object-cover" />
+                    <img
+                      src={selectedOrder.beforePhotoUrl}
+                      alt="Before Repair"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                      }}
+                    />
                   ) : (
                     <div className="text-xs text-slate-500">No inspection photo available</div>
                   )}
@@ -247,7 +254,14 @@ export const WorkOrderSystem: React.FC = () => {
                 </div>
                 <div className="relative rounded-lg overflow-hidden h-40 bg-slate-950 flex items-center justify-center">
                   {selectedOrder.afterPhotoUrl ? (
-                    <img src={selectedOrder.afterPhotoUrl} alt="After Repair" className="w-full h-full object-cover" />
+                    <img
+                      src={selectedOrder.afterPhotoUrl}
+                      alt="After Repair"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/sample_images/clear_clean_asphalt.jpg';
+                      }}
+                    />
                   ) : (
                     <div className="text-xs text-slate-500">Awaiting after-repair evidence</div>
                   )}

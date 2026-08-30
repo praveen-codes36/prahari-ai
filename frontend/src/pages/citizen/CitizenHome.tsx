@@ -302,6 +302,9 @@ export const CitizenHome: React.FC = () => {
                     alt={report.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                    }}
                   />
                   <div className="absolute top-2 left-2">
                     <SeverityBadge severity={report.severity} size="sm" />

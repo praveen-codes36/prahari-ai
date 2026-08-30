@@ -23,6 +23,7 @@ app.use(express.json({ limit: "16kb" }))
 app.use(express.urlencoded({ extended: true, limit: "16kb" }))
 app.use(express.static("public"))
 app.use("/uploads", express.static("uploads"))
+app.use("/sample_images", express.static("public/sample_images"))
 
 // cors configurations
 app.use(cors({

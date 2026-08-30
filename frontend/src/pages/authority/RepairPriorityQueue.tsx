@@ -177,6 +177,9 @@ export const RepairPriorityQueue: React.FC = () => {
                 alt={selectedItem.roadName}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                }}
               />
               <div className="absolute top-3 left-3 flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-[#93000a] text-[#ffdad6] font-mono text-sm font-bold flex items-center justify-center shadow-lg">

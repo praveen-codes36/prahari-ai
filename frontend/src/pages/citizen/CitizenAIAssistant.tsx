@@ -126,7 +126,14 @@ export const CitizenAIAssistant: React.FC = () => {
               
               {msg.attachment_url && (
                 <div className="mt-3">
-                  <img src={msg.attachment_url.startsWith('http') ? msg.attachment_url : `http://localhost:5000/${msg.attachment_url}`} alt="Attachment" className="max-w-full rounded-lg" />
+                  <img
+                    src={msg.attachment_url.startsWith('http') ? msg.attachment_url : (msg.attachment_url.startsWith('/') ? msg.attachment_url : `/${msg.attachment_url}`)}
+                    alt="Attachment"
+                    className="max-w-full rounded-lg"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg';
+                    }}
+                  />
                 </div>
               )}
             </div>
