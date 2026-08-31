@@ -151,7 +151,7 @@ export const CitizenHome: React.FC = () => {
               <span className="text-[11px] font-mono uppercase tracking-widest text-[#00daf3] bg-[#00e3fd]/10 px-2 py-0.5 rounded border border-[#00e3fd]/20">
                 Prahari Citizen App
               </span>
-              <span className="text-[11px] font-mono text-[#8c90a1]">GPS Active: Mumbai</span>
+              <span className="text-[11px] font-mono text-[#8c90a1]">GPS Active: Prayagraj, UP</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
               Welcome, {userName}
@@ -260,7 +260,7 @@ export const CitizenHome: React.FC = () => {
           </div>
 
           <p className="text-xs text-[#c2c6d8] my-3 leading-relaxed">
-            "Andheri East Link Road has 2 active repair zones. Two-wheelers advised to take Jogeshwari bypass during rainfall."
+            "Civil Lines Arterial Road has 2 active repair zones. Two-wheelers advised to take Medical College bypass during rainfall."
           </p>
 
           <div className="flex items-center justify-between text-xs font-mono text-[#b3c5ff] mt-2">

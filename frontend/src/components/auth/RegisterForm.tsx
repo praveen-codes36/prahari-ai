@@ -264,7 +264,7 @@ export const RegisterForm: React.FC = () => {
           type="text"
           value={form.name}
           onChange={(e) => setField('name', e.target.value)}
-          placeholder="e.g. Praveen Kumar"
+          placeholder="e.g. First Last"
           disabled={isLoading}
           className="w-full bg-[#080d1a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 font-mono focus:outline-none focus:border-[#00e3fd] focus:ring-1 focus:ring-[#00e3fd]/50 transition-all"
           required

@@ -39,11 +39,12 @@ const buildRepairPlan = (severity, mlResult = {}) => {
 // INTERNAL HELPERS
 // ==========================================
 export const detectDefectViaML = async (filePath) => {
-  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000/predict";
+  const ML_SERVICE_BASE = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+  const endpoint = ML_SERVICE_BASE.endsWith("/predict") ? ML_SERVICE_BASE : `${ML_SERVICE_BASE}/predict`;
   const formData = new FormData();
   formData.append("file", fs.createReadStream(filePath));
   try {
-    const response = await axios.post(ML_SERVICE_URL, formData, { headers: formData.getHeaders(), timeout: 30000 });
+    const response = await axios.post(endpoint, formData, { headers: formData.getHeaders(), timeout: 30000 });
     return { available: true, ...response.data };
   } catch (err) {
     console.warn("ML Service unavailable:", err.message);

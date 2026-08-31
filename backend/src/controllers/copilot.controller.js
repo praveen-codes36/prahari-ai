@@ -2,6 +2,25 @@ import axios from "axios";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Complaint } from "../models/complaint.model.js";
+
+async function getLiveMetrics() {
+    try {
+        const total = await Complaint.countDocuments();
+        const pending = await Complaint.countDocuments({ status: { $ne: "RESOLVED" } });
+        const highSeverity = await Complaint.countDocuments({ severity: { $in: ["HIGH", "CRITICAL"] } });
+        
+        return `
+[REAL-TIME CITY METRICS]
+Total Lifetime Reports: ${total}
+Active/Pending Road Defects: ${pending}
+High/Critical Priority Zones: ${highSeverity}
+Average Road Health Index: ${pending > 20 ? 55 : (pending > 10 ? 75 : 92)} / 100
+`;
+    } catch (e) {
+        return "[REAL-TIME DB UNAVAILABLE]";
+    }
+}
 
 async function generateGeminiCopilotResponse(query) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -10,21 +29,30 @@ async function generateGeminiCopilotResponse(query) {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: "gemini-3.6-flash",
+            model: "gemini-1.5-flash",
             systemInstruction: `You are the Prahari AI Authority Copilot for Prayagraj Smart City and Municipal Road Operations.
 You assist road engineers, municipal commissioners, and traffic authorities with defect priority checks, risk analysis, resource allocation, and emergency planning.
 
 Respond strictly with valid JSON with this schema:
 {
   "query": "<user_query>",
-  "answer": "<executive strategic answer>",
-  "grounded_facts": ["<fact 1>", "<fact 2>", "<fact 3>"],
+  "answer": "<executive strategic answer directly addressing the user's specific query>",
+  "grounded_facts": [
+    {
+      "rank": 1,
+      "corridor": "<Road Name>",
+      "defect": "<Defect Description>",
+      "priority_score": 90,
+      "urgency": "<EMERGENCY | HIGH_PRIORITY | MEDIUM>"
+    }
+  ],
   "recommended_actions": ["<action 1>", "<action 2>"]
 }
 Do not wrap in markdown or backticks if possible, return raw JSON string.`
         });
 
-        const prompt = `Authority Query: ${query}`;
+        const liveMetrics = await getLiveMetrics();
+        const prompt = `[CONTEXT: Live Database Metrics]\n${liveMetrics}\n\n[USER QUERY]\n${query}\n\nINSTRUCTION: Provide a strategic answer that directly addresses the [USER QUERY] above. Do not just summarize the metrics unless asked.`;
         const result = await model.generateContent(prompt);
         const text = result.response.text().trim();
         const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*$/gi, "").trim();
@@ -61,21 +89,7 @@ export const queryCopilot = async (req, res) => {
                 return res.status(200).json(new ApiResponse(200, geminiData, "Copilot query executed successfully via Gemini"));
             }
 
-            // High quality deterministic fallback
-            const defaultData = {
-                query: query_text,
-                answer: `Based on current network telemetry across Prayagraj corridors, high-risk arterial zones (Civil Lines, MG Marg, SRN Hospital Bypass) are prioritized with active patrol alerts.`,
-                grounded_facts: [
-                    "Corridor MG Marg: Risk Index 0.88 (Critical priority)",
-                    "Asphalt Material Reserve: 84% operational capacity",
-                    "Rapid Response Teams: 4 units deployed"
-                ],
-                recommended_actions: [
-                    "Dispatch quick-patch repair squad to identified high-risk nodes within 12 hours.",
-                    "Coordinate with traffic police for partial lane diversions during peak morning hours."
-                ]
-            };
-            return res.status(200).json(new ApiResponse(200, defaultData, "Copilot query executed successfully via local intelligence"));
+            throw new ApiError(500, "AI Copilot Service is currently unavailable. Please check the backend services or try again later.");
         }
     } catch (error) {
         return res.status(error.statusCode || 500).json(
@@ -104,19 +118,7 @@ export const explainSegmentRisk = async (req, res) => {
                 return res.status(200).json(new ApiResponse(200, geminiData, "Segment explanation executed successfully via Gemini"));
             }
 
-            return res.status(200).json(new ApiResponse(200, {
-                query: `explain risk for ${roadSegmentId}`,
-                answer: `Segment ${roadSegmentId} exhibits elevated risk driven by surface degradation, monsoon drainage vulnerability, and heavy peak-hour traffic volume.`,
-                grounded_facts: [
-                    `Segment ID: ${roadSegmentId}`,
-                    "Primary Driver: Surface Potholes & Structural Fatigue",
-                    "Traffic Load: High commercial vehicle transit"
-                ],
-                recommended_actions: [
-                    "Schedule infrared asphalt resurfacing",
-                    "Implement localized heavy vehicle speed damping"
-                ]
-            }, "Segment explanation executed successfully"));
+            throw new ApiError(500, "AI Explanation Service is currently unavailable.");
         }
     } catch (error) {
         return res.status(error.statusCode || 500).json(

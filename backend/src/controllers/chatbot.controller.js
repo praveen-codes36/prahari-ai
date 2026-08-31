@@ -4,6 +4,9 @@ import { ApiError } from "../utils/api-error.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
 import FormData from "form-data";
+import fs from "fs";
+import { Complaint } from "../models/complaint.model.js";
+import { detectDefectViaML } from "./complaints.controller.js";
 
 // Helper to get GoogleGenerativeAI client dynamically
 function getGenAI() {
@@ -12,28 +15,24 @@ function getGenAI() {
     return new GoogleGenerativeAI(apiKey);
 }
 
-// Helper function to call the ML model with an image URL
-async function callMLModel(attachmentUrl) {
+// Helper function to call the ML model with a local file path
+async function callMLModel(filePath) {
     try {
-        // Fetch the image as a stream
-        const response = await axios.get(attachmentUrl, { responseType: "stream" });
-        
-        // Create form data
         const form = new FormData();
-        form.append("file", response.data, "attachment.jpg"); // filename is required for backend to recognize it as a file
+        form.append("file", fs.createReadStream(filePath), "attachment.jpg");
 
-        // Call the local Python ML server
-        const mlResponse = await axios.post("http://127.0.0.1:8000/predict", form, {
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+        const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, form, {
             headers: {
                 ...form.getHeaders()
             },
-            timeout: 10000 // 10s timeout
+            timeout: 10000
         });
         
         return mlResponse.data;
     } catch (error) {
         console.error("ML Model Error:", error.message);
-        return null;
+        throw new ApiError(500, "Image processing service (ML Model) is currently unavailable.");
     }
 }
 
@@ -52,48 +51,27 @@ Follow these rules:
    Where <ACTION_NAME> can be one of: "PROMPT_FOR_PHOTO", "AWAITING_LOCATION", "FILE_COMPLAINT", "STATUS_CHECK", "GREETING", "EMERGENCY", "FALLBACK".
    The rest of your response will be shown to the user. Do not leak internal backend stack traces.`;
 
-// Intelligent local rule-based fallback if external API is temporarily unavailable
-function generateLocalFallback(text = "", attachmentUrl = null, mlResult = null) {
-    const lower = text.toLowerCase();
-    let botAction = "FALLBACK";
-    let botText = "";
 
-    if (attachmentUrl || mlResult) {
-        const defect = mlResult?.defect_type || "Road defect";
-        botAction = "AWAITING_LOCATION";
-        botText = `📸 Photo received! Our vision model identified a potential ${defect}. Please share the exact landmark or street location in Prayagraj so we can dispatch the road maintenance crew.`;
-    } else if (lower.includes("status") || lower.includes("track") || lower.includes("complaint") || /rep-\d+/i.test(lower)) {
-        botAction = "STATUS_CHECK";
-        botText = "🔍 To check your complaint status, please provide your Ticket ID (e.g. REP-PRG-10452) or check the 'My Complaints' section in your citizen dashboard.";
-    } else if (lower.includes("pothole") || lower.includes("road") || lower.includes("light") || lower.includes("garbage") || lower.includes("drain") || lower.includes("broken")) {
-        botAction = "PROMPT_FOR_PHOTO";
-        botText = "⚠️ Thanks for bringing this to our attention. Could you please provide the road location and attach a photo if available so our team can verify and fix it quickly?";
-    } else if (lower.includes("emergency") || lower.includes("accident") || lower.includes("ambulance") || lower.includes("hospital")) {
-        botAction = "EMERGENCY";
-        botText = "🚑 If this is a life-threatening emergency, please dial 112 (Police) or 108 (Ambulance) immediately. Nearest trauma center: SRN Hospital, Prayagraj.";
-    } else if (lower.includes("hi") || lower.includes("hello") || lower.includes("namaste") || lower.includes("hey")) {
-        botAction = "GREETING";
-        botText = "Namaste! I am the Prahari AI Assistant for Prayagraj Smart Roads. How can I help you today? You can report potholes, check complaint status, or ask about road safety.";
-    } else {
-        botAction = "FALLBACK";
-        botText = "Namaste! I am here to help you report road defects, track complaints, or check safety conditions. How can I assist you?";
-    }
-
-    return { botText, botAction };
-}
 
 // @desc    Send a message (text or photo) to the citizen chatbot
 // @route   POST /api/chatbot/citizen/message
 // @body    { user_id, text?, attachment_url?, channel? }
 export const sendChatbotMessage = async (req, res) => {
     try {
-        const { user_id, text, attachment_url, channel = "CITIZEN" } = req.body;
+        const { user_id, text, channel = "CITIZEN" } = req.body;
+        let attachment_url = req.body.attachment_url || null;
+        let filePath = null;
+
+        if (req.file) {
+            filePath = req.file.path;
+            attachment_url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        }
 
         if (!user_id) {
             throw new ApiError(400, "user_id is required");
         }
-        if (!text && !attachment_url) {
-            throw new ApiError(400, "Message must contain text or an attachment_url");
+        if (!text && !attachment_url && !filePath) {
+            throw new ApiError(400, "Message must contain text or an attachment");
         }
 
         // Fetch or create conversation
@@ -114,12 +92,10 @@ export const sendChatbotMessage = async (req, res) => {
         // Prepare context for Gemini
         let mlContext = "";
         let mlResult = null;
-        if (attachment_url) {
-            mlResult = await callMLModel(attachment_url);
+        if (filePath) {
+            mlResult = await callMLModel(filePath);
             if (mlResult) {
                 mlContext = `[SYSTEM CONTEXT: The user uploaded an image. Our ML model detected a ${mlResult.defect_type || 'unknown defect'} with a severity of ${mlResult.severity || 'unknown'} (confidence: ${mlResult.confidence_score ? Math.round(mlResult.confidence_score * 100) : 'unknown'}%). Please inform the user and ask for location confirmation.]\n\n`;
-            } else {
-                mlContext = `[SYSTEM CONTEXT: The user uploaded an image, but the ML model failed to analyze it. Acknowledge the photo but mention analysis failed.]\n\n`;
             }
         }
 
@@ -194,6 +170,49 @@ export const sendChatbotMessage = async (req, res) => {
                                 const parsed = JSON.parse(actionMatch[1]);
                                 botAction = parsed.action || "FALLBACK";
                                 botText = rawResponse.replace(actionMatch[0], "").trim();
+
+                                if (botAction === "FILE_COMPLAINT") {
+                                    try {
+                                        const lastAttachmentMsg = conversation.messages.slice().reverse().find(m => m.attachment_url);
+                                        let photo_url = lastAttachmentMsg ? lastAttachmentMsg.attachment_url : "";
+                                        const hostUrl = `${req.protocol}://${req.get("host")}/`;
+                                        if (photo_url.startsWith(hostUrl)) {
+                                            photo_url = photo_url.replace(hostUrl, "");
+                                        }
+
+                                        const lastUserMsg = conversation.messages.slice().reverse().find(m => m.sender === "USER" && m.text);
+                                        const address = lastUserMsg ? lastUserMsg.text : "Prayagraj";
+
+                                        let defect_type = "POTHOLE";
+                                        let severity = "HIGH";
+                                        let confidence = 90;
+
+                                        if (photo_url && fs.existsSync(photo_url)) {
+                                            const mlRes = await detectDefectViaML(photo_url);
+                                            if (mlRes && mlRes.available) {
+                                                defect_type = mlRes.defect_type === "Pothole" ? "POTHOLE" 
+                                                            : mlRes.defect_type === "Streetlight Defect" ? "BROKEN_STREETLIGHT" 
+                                                            : mlRes.defect_type === "Garbage Accumulation" ? "GARBAGE" 
+                                                            : mlRes.defect_type === "Drainage Issues" ? "DRAINAGE" : "OTHER";
+                                                severity = mlRes.severity || "HIGH";
+                                                confidence = Number(mlRes.confidence_score) || 90;
+                                            }
+                                        }
+
+                                        await Complaint.create({
+                                            citizen_id: user_id,
+                                            photo_url: photo_url || "uploads/demo.jpg",
+                                            defect_type,
+                                            severity,
+                                            confidence_score: confidence,
+                                            ai_analysis_status: "AVAILABLE",
+                                            location: { type: "Point", coordinates: [81.8463, 25.4358], address },
+                                            status: "REPORTED"
+                                        });
+                                    } catch (fileErr) {
+                                        console.error("Failed to automatically file complaint:", fileErr);
+                                    }
+                                }
                             } catch (e) {
                                 botText = rawResponse.trim();
                             }
@@ -209,21 +228,15 @@ export const sendChatbotMessage = async (req, res) => {
                 }
 
                 if (!responseSuccess) {
-                    const fallback = generateLocalFallback(text, attachment_url, mlResult);
-                    botText = fallback.botText;
-                    botAction = fallback.botAction;
+                    throw new ApiError(500, "AI Service is currently unavailable.");
                 }
             } catch (llmError) {
                 console.error("Gemini Generation Error:", llmError);
-                const fallback = generateLocalFallback(text, attachment_url, mlResult);
-                botText = fallback.botText;
-                botAction = fallback.botAction;
+                throw new ApiError(500, "Failed to communicate with AI Service");
             }
         } else {
             console.warn("GEMINI_API_KEY is not configured in environment.");
-            const fallback = generateLocalFallback(text, attachment_url, mlResult);
-            botText = fallback.botText;
-            botAction = fallback.botAction;
+            throw new ApiError(500, "AI Service is not configured (Missing GEMINI_API_KEY)");
         }
 
         const botMessage = { sender: "BOT", text: botText, created_at: new Date() };

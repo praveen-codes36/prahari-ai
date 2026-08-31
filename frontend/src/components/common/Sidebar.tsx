@@ -25,6 +25,7 @@ import {
 import { UserRole } from '../../types';
 
 import apiClient from '../../services/apiClient';
+import { authService } from '../../services/authService';
 
 interface SidebarProps {
   currentRole: UserRole;
@@ -39,26 +40,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
     teams: 0,
     workOrders: 0,
   });
+  
+  const user = authService.getSession()?.user;
 
   React.useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const [alertsRes, accRes, compRes] = await Promise.allSettled([
+        const [alertsRes, accRes, newCompRes, teamsRes, wkoRes] = await Promise.allSettled([
           apiClient.get('/alerts/active'),
           apiClient.get('/accidents'),
-          apiClient.get('/complaints'),
+          apiClient.get('/complaints?status=REPORTED'),
+          apiClient.get('/field-teams'),
+          apiClient.get('/complaints?status=ASSIGNED'),
         ]);
 
         const alertCount = alertsRes.status === 'fulfilled' && alertsRes.value.data?.data ? (Array.isArray(alertsRes.value.data.data) ? alertsRes.value.data.data.length : 0) : 0;
         const accCount = accRes.status === 'fulfilled' && accRes.value.data?.data ? (Array.isArray(accRes.value.data.data) ? accRes.value.data.data.length : 0) : 0;
-        const compCount = compRes.status === 'fulfilled' && compRes.value.data?.data ? (Array.isArray(compRes.value.data.data) ? compRes.value.data.data.length : 0) : 0;
+        const compCount = newCompRes.status === 'fulfilled' && newCompRes.value.data?.data ? (Array.isArray(newCompRes.value.data.data) ? newCompRes.value.data.data.length : 0) : 0;
+        const teamsCount = teamsRes.status === 'fulfilled' && teamsRes.value.data?.data ? (Array.isArray(teamsRes.value.data.data) ? teamsRes.value.data.data.length : 0) : 0;
+        const wkoCount = wkoRes.status === 'fulfilled' && wkoRes.value.data?.data ? (Array.isArray(wkoRes.value.data.data) ? wkoRes.value.data.data.length : 0) : 0;
 
         setCounts({
           alerts: alertCount,
           accidents: accCount,
           complaints: compCount,
-          teams: 4,
-          workOrders: 12,
+          teams: teamsCount,
+          workOrders: wkoCount,
         });
       } catch {
         // Fallback gracefully
@@ -96,8 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
       label: 'FIELD OPERATIONS',
       items: [
         { name: 'Maintenance Command', path: '/authority/maintenance-command', icon: Wrench, badge: null },
-        { name: 'Field Teams', path: '/authority/field-teams', icon: Truck, badge: 'Live' },
-        { name: 'Work Orders System', path: '/authority/work-orders', icon: FileCheck2, badge: null },
+        { name: 'Field Teams', path: '/authority/field-teams', icon: Truck, badge: counts.teams > 0 ? `${counts.teams} Live` : null },
+        { name: 'Work Orders System', path: '/authority/work-orders', icon: FileCheck2, badge: counts.workOrders > 0 ? String(counts.workOrders) : null },
         { name: 'Field Worker Mobile App', path: '/authority/field-app', icon: Smartphone, badge: 'SQUAD' },
       ],
     },
@@ -188,14 +195,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentRole }) => {
       {/* Footer Profile Pod */}
       <div className="p-3 border-t border-slate-800 bg-[#080d17] flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[#001738] font-black text-xs shadow-[0_0_12px_rgba(0,227,253,0.3)]">
-            NS
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[#001738] font-black text-xs shadow-[0_0_12px_rgba(0,227,253,0.3)] uppercase">
+            {user?.name ? user.name.substring(0, 2) : 'NS'}
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-bold text-white truncate">N. Srivastava</div>
+            <div className="text-xs font-bold text-white truncate">{user?.name || 'N. Srivastava'}</div>
             <div className="text-[10px] font-mono text-cyan-400 truncate flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-cyan-400 inline" />
-              Authority Lead · PWD / NHAI
+              {user?.department || 'Authority Lead · PWD / NHAI'}
             </div>
           </div>
         </div>

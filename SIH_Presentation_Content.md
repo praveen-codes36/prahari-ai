@@ -1,21 +1,26 @@
 # SLIDE 1 — IDEA TITLE
 
 **❖ Proposed Solution (Describe your Idea/Solution/Prototype)**
-Prahari AI is a unified, autonomous ecosystem connecting citizens, authorities, and emergency services. It leverages AI to instantly analyze citizen-reported road defects, predict infrastructure failures, and compute both the fastest and safest routes for everyday commuters and critical emergency response.
+- **🎯 Core Idea:** A unified, autonomous ecosystem connecting citizens, authorities, and emergency services.
+- **🚨 The Problem Solved:**
+  - **For Citizens:** Unsafe commutes and lack of easy hazard reporting.
+  - **For Authorities:** Manual inspection backlogs, unstructured data, and inability to prioritize critical repairs.
+- **⚡ The Solution:** AI instantly analyzes defect reports, predicts infrastructure failures, and computes dynamic safe/fast routes.
 
 **❖ Detailed explanation of the proposed solution / How it addresses the problem**
 ```text
-Citizen / Commuter
-      ↓
-Reports Road Issue (Image/Location) via App
-      ↓
-AI Vision Triage (Severity & Defect Type)
-      ↓
-Risk & Degradation Forecasting Engine
-      ↓
-Dynamic Routing Update (Safe/Fast Routes) + Authority Dashboard
-      ↓
-Rapid Emergency Response & Proactive Maintenance
+Citizen (Faces Hazards)       Authority (Faces Overload & Blindspots)
+      ↓                                 ↓
+Reports Issue via App          Lacks Real-Time Actionable Data
+      \                                /
+       \                              /
+      AI Vision Triage (Determines Severity & Defect Type)
+                      ↓
+      Risk & Degradation Forecasting Engine
+                      ↓
+Dynamic Routing (Safe/Fast)  +   Authority Operations Dashboard
+                      ↓
+  Safer Travel & Rapid Response + Automated, Data-Driven Prioritization
 ```
 
 **❖ Innovation and uniqueness of the solution**
@@ -79,18 +84,7 @@ Rapid Emergency Response & Proactive Maintenance
 
 **❖ Benefits of the solution (social, economic, environmental, etc.)**
 
-**🧑 SOCIAL BENEFITS**
-- Maximized public safety and enhanced citizen-government collaboration.
-- Equitable distribution of infrastructure maintenance based on data, not bias.
-
-**💰 ECONOMIC BENEFITS**
-- Prevents costly emergency infrastructure failures through early intervention.
-- Highly efficient public resource and workforce allocation.
-
-**🌱 ENVIRONMENTAL BENEFITS**
-- Rapid identification and clearing of roadside waste/garbage hazards.
-- Less vehicle idling and lower emissions due to optimized traffic routing.
-
-**⚡ OPERATIONAL BENEFITS**
-- Eliminates manual reporting backlogs.
-- Transforms reactive municipal maintenance into data-driven proactive planning.
+| 🧑 SOCIAL | 💰 ECONOMIC | 🌱 ENVIRONMENTAL | ⚡ OPERATIONAL |
+| :--- | :--- | :--- | :--- |
+| **Maximized Safety:** Enhanced public safety and collaboration. | **Cost Savings:** Prevents costly emergency failures. | **Waste Control:** Rapid clearing of roadside waste. | **Efficiency:** Eliminates manual reporting backlogs. |
+| **Fairness:** Data-driven, unbiased maintenance distribution. | **Resource Optimization:** Efficient workforce allocation. | **Emissions:** Reduced idling via optimized routing. | **Proactive:** Shifts from reactive to predictive planning. |

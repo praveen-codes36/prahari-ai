@@ -35,8 +35,10 @@ function Chatbot() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   /*
   |--------------------------------------------------------------------------
@@ -69,20 +71,30 @@ function Chatbot() {
   | Send a message (POST /api/chatbot/citizen/message)
   |--------------------------------------------------------------------------
   */
-  async function sendMessage(text, attachment_url) {
-    if (!text && !attachment_url) return;
+  async function sendMessage(text, file) {
+    if (!text && !file) return;
 
-    const userMessage = { sender: "USER", text, attachment_url: attachment_url || null, created_at: new Date().toISOString() };
+    // Generate local object URL for instant preview if file exists
+    const localPreviewUrl = file ? URL.createObjectURL(file) : null;
+    const userMessage = { sender: "USER", text, attachment_url: localPreviewUrl, created_at: new Date().toISOString() };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
     setSending(true);
     setError("");
 
     try {
+      const formData = new FormData();
+      formData.append("user_id", userId);
+      if (text) formData.append("text", text);
+      if (file) formData.append("photo", file);
+
       const res = await fetch(`${API_BASE_URL}/api/chatbot/citizen/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, text, attachment_url })
+        body: formData // No Content-Type header so the browser sets it with the boundary
       });
 
       const json = await res.json();
@@ -98,14 +110,19 @@ function Chatbot() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    sendMessage(input.trim());
+    sendMessage(input.trim(), selectedFile);
   }
 
-  // Photo capture: real upload/storage (e.g. Cloudinary, matching backend/package.json's
-  // dependency) is Person 1's Complaints module concern — this just demonstrates the flow
-  // by sending a placeholder attachment_url so the bot's photo branch can be exercised end-to-end.
   function handlePhotoClick() {
-    sendMessage("", "https://placeholder.prahari.ai/uploads/demo-defect.jpg");
+    if (fileInputRef.current) {
+        fileInputRef.current.click();
+    }
+  }
+
+  function handleFileChange(e) {
+      if (e.target.files && e.target.files.length > 0) {
+          setSelectedFile(e.target.files[0]);
+      }
   }
 
   return (
@@ -131,7 +148,9 @@ function Chatbot() {
             <span className="chatbot-bubble-icon">{m.sender === "USER" ? <User size={14} /> : <Bot size={14} />}</span>
             <div className={`chatbot-bubble ${m.sender === "USER" ? "bubble-user" : "bubble-bot"}`}>
               {m.attachment_url && (
-                <p className="chatbot-attachment">📷 Photo attached</p>
+                <div className="chatbot-attachment">
+                   <img src={m.attachment_url} alt="Uploaded attachment" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '4px' }} />
+                </div>
               )}
               {m.text && <p>{m.text}</p>}
             </div>
@@ -151,16 +170,23 @@ function Chatbot() {
       </main>
 
       <form className="chatbot-input-bar" onSubmit={handleSubmit}>
-        <button type="button" className="chatbot-icon-btn" onClick={handlePhotoClick} title="Attach a defect photo">
-          <Camera size={18} />
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          style={{ display: "none" }} 
+          onChange={handleFileChange} 
+        />
+        <button type="button" className={`chatbot-icon-btn ${selectedFile ? 'has-file' : ''}`} onClick={handlePhotoClick} title="Attach a defect photo">
+          <Camera size={18} color={selectedFile ? '#10b981' : 'currentColor'} />
         </button>
         <input
           type="text"
-          placeholder="Type a message..."
+          placeholder={selectedFile ? `File: ${selectedFile.name}` : "Type a message..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <button type="submit" className="chatbot-send-btn" disabled={sending || !input.trim()}>
+        <button type="submit" className="chatbot-send-btn" disabled={sending || (!input.trim() && !selectedFile)}>
           <Send size={18} />
         </button>
       </form>

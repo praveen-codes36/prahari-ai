@@ -66,7 +66,7 @@ export function App() {
           <Route index element={<RootRedirect />} />
           
           {/* Authority Perspective Routes */}
-          <Route path="authority" element={<ProtectedRoute allowedRoles={['authority']}><Outlet /></ProtectedRoute>}>
+          <Route path="authority" element={<ProtectedRoute allowedRoles={['authority', 'maintenance']}><Outlet /></ProtectedRoute>}>
             <Route index element={<AuthorityOverview />} />
             <Route path="risk-intel" element={<AIRiskIntelligencePage />} />
             <Route path="priority" element={<RepairPriorityQueue />} />

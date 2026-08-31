@@ -125,6 +125,8 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
   }, []);
 
   // Filter search results across all entities
+  const isAuthority = currentRole !== 'citizen';
+
   const filteredRoads = MOCK_ROAD_SEGMENTS.filter(
     (r) =>
       r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,25 +134,31 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
       r.city.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 3);
 
-  const filteredIncidents = MOCK_EMERGENCY_INCIDENTS.filter(
-    (inc) =>
-      inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.location.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 3);
+  const filteredIncidents = isAuthority
+    ? MOCK_EMERGENCY_INCIDENTS.filter(
+        (inc) =>
+          inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          inc.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          inc.location.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 3)
+    : [];
 
-  const filteredWorkOrders = MOCK_WORK_ORDERS.filter(
-    (wo) =>
-      wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      wo.roadName.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 3);
+  const filteredWorkOrders = isAuthority
+    ? MOCK_WORK_ORDERS.filter(
+        (wo) =>
+          wo.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          wo.roadName.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 3)
+    : [];
 
-  const filteredTeams = MOCK_FIELD_TEAMS.filter(
-    (t) =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.callsign.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 2);
+  const filteredTeams = isAuthority
+    ? MOCK_FIELD_TEAMS.filter(
+        (t) =>
+          t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.callsign.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          t.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 2)
+    : [];
 
   const totalResults =
     filteredRoads.length + filteredIncidents.length + filteredWorkOrders.length + filteredTeams.length;
@@ -167,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
   const criticalAlertCount = unreadAlerts.filter((a) => a.type === 'CRITICAL' && !a.isRead).length;
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-[#080d17]/95 backdrop-blur-2xl border-b border-slate-800/80 z-50 flex items-center justify-between px-3 md:px-6">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-[#080d17]/95 backdrop-blur-2xl border-b border-slate-800/80 z-[9999] flex items-center justify-between px-3 md:px-6">
       {/* Brand & Mission Control ID */}
       <div className="flex items-center gap-3 md:gap-4">
         <Link to="/authority" className="flex items-center gap-3 group">
@@ -203,6 +211,12 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
               setSearchQuery(e.target.value);
               setIsSearchOpen(true);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchQuery.trim()) {
+                setIsSearchOpen(false);
+                navigate(currentRole === 'citizen' ? '/citizen/risk-map' : '/authority/global-map');
+              }
+            }}
             onFocus={() => setIsSearchOpen(true)}
             placeholder="Search road, asset ID, incident, work order, team, location..."
             className="w-full bg-[#0e1626] border border-slate-700/80 rounded-xl pl-9.5 pr-8 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-[#00e3fd] focus:ring-1 focus:ring-[#00e3fd]/40 transition-all font-sans"
@@ -222,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
 
         {/* Universal Search Results Popover */}
         {isSearchOpen && searchQuery.trim() !== '' && (
-          <div className="absolute top-full mt-2 inset-x-0 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-3 z-50 max-h-96 overflow-y-auto space-y-3">
+          <div className="absolute top-full mt-2 inset-x-0 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-3 z-[9999] max-h-96 overflow-y-auto space-y-3">
             <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 border-b border-slate-800 pb-1.5">
               <span>SEARCH RESULTS ({totalResults})</span>
               <span>ESC to dismiss</span>
@@ -241,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSearchQuery('');
-                      navigate('/authority/emergency-ops');
+                      navigate(currentRole === 'citizen' ? '/citizen/risk-map' : '/authority/emergency-ops');
                     }}
                     className="p-2 rounded-lg hover:bg-slate-800/80 cursor-pointer flex items-center justify-between group"
                   >
@@ -272,7 +286,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSearchQuery('');
-                      navigate('/authority/global-map');
+                      navigate(currentRole === 'citizen' ? '/citizen/risk-map' : '/authority/global-map');
                     }}
                     className="p-2 rounded-lg hover:bg-slate-800/80 cursor-pointer flex items-center justify-between group"
                   >
@@ -303,7 +317,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSearchQuery('');
-                      navigate('/authority/work-orders');
+                      navigate(currentRole === 'citizen' ? '/citizen/dashboard' : '/authority/work-orders');
                     }}
                     className="p-2 rounded-lg hover:bg-slate-800/80 cursor-pointer flex items-center justify-between group"
                   >
@@ -334,7 +348,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSearchQuery('');
-                      navigate('/authority/field-teams');
+                      navigate(currentRole === 'citizen' ? '/citizen/dashboard' : '/authority/field-teams');
                     }}
                     className="p-2 rounded-lg hover:bg-slate-800/80 cursor-pointer flex items-center justify-between group"
                   >
@@ -399,7 +413,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
           </button>
 
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-4 z-50 space-y-3">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-4 z-[9999] space-y-3">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <div className="flex items-center gap-2">
                   <Radio className="w-4 h-4 text-[#ff5252] animate-pulse" />
@@ -506,7 +520,7 @@ export const Header: React.FC<HeaderProps> = ({ currentRole, onRoleChange }) => 
           </button>
 
           {isRoleDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-2 z-50 space-y-1">
+            <div className="absolute right-0 mt-2 w-48 bg-[#0d1424] border border-slate-700 rounded-xl shadow-2xl p-2 z-[9999] space-y-1">
               <div className="px-2 py-1 text-[10px] font-mono text-slate-400 uppercase">
                 ACTIVE SESSION
               </div>

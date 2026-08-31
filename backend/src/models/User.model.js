@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['CITIZEN', 'AUTHORITY', 'EMERGENCY', 'ADMIN']
+        enum: ['CITIZEN', 'AUTHORITY', 'EMERGENCY', 'ADMIN', 'MAINTENANCE']
     },
     department_id: {
         type: mongoose.Schema.Types.ObjectId,

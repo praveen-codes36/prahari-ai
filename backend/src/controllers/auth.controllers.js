@@ -27,13 +27,13 @@ const sendEmailHelper = async (to, subject, text) => {
     }
 };
 
-const VALID_REGISTER_ROLES = ['CITIZEN', 'AUTHORITY', 'EMERGENCY', 'ADMIN'];
+const VALID_REGISTER_ROLES = ['CITIZEN', 'AUTHORITY', 'EMERGENCY', 'ADMIN', 'MAINTENANCE'];
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
 
 const isStrongPassword = (password) => {
     const value = String(password || '');
-    return value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+    return value.length >= 8 && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 };
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();

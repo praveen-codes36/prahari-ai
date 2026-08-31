@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Send, Sparkles, Shield, MapPin, AlertCircle, ArrowRight, User } from 'lucide-react';
+import { Bot, Send, Sparkles, Shield, MapPin, AlertCircle, ArrowRight, User, Camera } from 'lucide-react';
 import { sendCitizenChatMessage, getCitizenChatHistory, ChatbotMessage } from '../../services/aiChatbotService';
 
 export const CitizenAIAssistant: React.FC = () => {
@@ -12,12 +12,30 @@ export const CitizenAIAssistant: React.FC = () => {
   ]);
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  const renderMessageText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={idx} className="font-bold text-[#00daf3]">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
 
   const samplePrompts = [
-    'Is Western Express Highway safe to commute right now?',
-    'Show critical pothole locations near Powai & Andheri',
-    'How does Prahari AI route emergency ambulances?',
-    'What should I do if I spot a large sinkhole?',
+    'How do I report a new pothole?',
+    'Check the status of my recent complaint',
+    'Are there any road blockages near Civil Lines?',
+    'Is it safe to commute near MG Marg today?',
   ];
 
   useEffect(() => {
@@ -40,15 +58,32 @@ export const CitizenAIAssistant: React.FC = () => {
 
   const handleSend = async (queryText?: string) => {
     const q = queryText || inputQuery;
-    if (!q.trim() || isLoading) return;
+    if ((!q.trim() && !selectedFile) || isLoading) return;
 
-    const userMessage: ChatbotMessage = { sender: 'USER', text: q, created_at: new Date().toISOString() };
+    let previewUrl = null;
+    if (selectedFile) {
+        previewUrl = URL.createObjectURL(selectedFile);
+    }
+
+    const userMessage: ChatbotMessage = { 
+        sender: 'USER', 
+        text: q, 
+        attachment_url: previewUrl,
+        created_at: new Date().toISOString() 
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInputQuery('');
+    
+    const fileToUpload = selectedFile;
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+    
     setIsLoading(true);
 
     try {
-      const response = await sendCitizenChatMessage(q);
+      const response = await sendCitizenChatMessage(q, fileToUpload || undefined);
       setMessages((prev) => [...prev, response.reply]);
     } catch (error) {
       console.error(error);
@@ -63,9 +98,9 @@ export const CitizenAIAssistant: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pb-24 pt-2 space-y-4">
+    <div className="max-w-3xl mx-auto h-[calc(100vh-70px)] flex flex-col pt-2 pb-20 px-2 md:px-0 gap-3">
       {/* Header */}
-      <div className="bg-[#151b2b] p-4 md:p-5 rounded-2xl border border-white/10 flex items-center justify-between shadow-xl">
+      <div className="shrink-0 bg-[#151b2b] p-4 md:p-5 rounded-2xl border border-white/10 flex items-center justify-between shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#00e3fd]/20 text-[#00daf3] flex items-center justify-center shadow-[0_0_15px_rgba(0,227,253,0.3)]">
             <Bot className="w-5 h-5" />
@@ -85,7 +120,7 @@ export const CitizenAIAssistant: React.FC = () => {
       </div>
 
       {/* Suggested quick queries */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {samplePrompts.map((prompt, idx) => (
           <button
             key={idx}
@@ -99,7 +134,7 @@ export const CitizenAIAssistant: React.FC = () => {
       </div>
 
       {/* Chat messages container */}
-      <div className="bg-[#151b2b]/95 rounded-2xl border border-white/10 p-4 md:p-6 min-h-[420px] max-h-[550px] overflow-y-auto space-y-4 shadow-2xl">
+      <div className="flex-1 bg-[#151b2b]/95 rounded-2xl border border-white/10 p-4 md:p-6 overflow-y-auto space-y-4 shadow-2xl">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -122,7 +157,7 @@ export const CitizenAIAssistant: React.FC = () => {
                   : 'bg-[#191f2f] text-[#dde2f8] border border-white/10 rounded-tl-none'
               }`}
             >
-              <div className="whitespace-pre-wrap">{msg.text}</div>
+              <div className="whitespace-pre-wrap">{renderMessageText(msg.text)}</div>
               
               {msg.attachment_url && (
                 <div className="mt-3">
@@ -151,6 +186,7 @@ export const CitizenAIAssistant: React.FC = () => {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input box */}
@@ -159,18 +195,38 @@ export const CitizenAIAssistant: React.FC = () => {
           e.preventDefault();
           handleSend();
         }}
-        className="flex items-center gap-2 bg-[#151b2b] rounded-2xl p-2 border border-white/15 focus-within:border-[#00daf3] shadow-xl"
+        className="shrink-0 flex items-center gap-2 bg-[#151b2b] rounded-2xl p-2 border border-white/15 focus-within:border-[#00daf3] shadow-xl"
       >
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          className="hidden" 
+          style={{ display: 'none' }}
+          onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                  setSelectedFile(e.target.files[0]);
+              }
+          }} 
+        />
+        <button 
+          type="button" 
+          onClick={() => fileInputRef.current?.click()}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 border border-white/10 ${selectedFile ? 'bg-[#00daf3]/20 text-[#00daf3] border-[#00daf3]/50' : 'bg-[#191f2f] text-[#8c90a1] hover:text-white hover:bg-[#242a3a]'}`}
+          title="Attach a photo"
+        >
+          <Camera className="w-4 h-4" />
+        </button>
         <input
           type="text"
           value={inputQuery}
           onChange={(e) => setInputQuery(e.target.value)}
-          placeholder="Ask AI safety assistant anything..."
+          placeholder={selectedFile ? `File: ${selectedFile.name}` : "Ask AI safety assistant anything..."}
           className="flex-1 bg-transparent px-3 text-xs md:text-sm text-white placeholder:text-[#8c90a1] focus:outline-none font-mono"
         />
         <button
           type="submit"
-          disabled={!inputQuery.trim() || isLoading}
+          disabled={(!inputQuery.trim() && !selectedFile) || isLoading}
           className="w-10 h-10 rounded-xl bg-[#b3c5ff] hover:bg-[#dae1ff] text-[#002b75] flex items-center justify-center font-bold disabled:opacity-40 transition-all shadow-md shrink-0"
         >
           <Send className="w-4 h-4" />

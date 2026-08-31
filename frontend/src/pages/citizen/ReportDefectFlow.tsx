@@ -24,7 +24,7 @@ import { AIDefectAnalysis, DefectType, SeverityLevel } from '../../types';
 export const ReportDefectFlow: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const preselectedRoad = searchParams.get('road') || 'Andheri East Link Road, Mumbai';
+  const preselectedRoad = searchParams.get('road') || 'Civil Lines, Prayagraj';
 
   const [step, setStep] = useState<'upload' | 'scanning' | 'analysis' | 'location' | 'success'>('upload');
   const [selectedImage, setSelectedImage] = useState<string>(

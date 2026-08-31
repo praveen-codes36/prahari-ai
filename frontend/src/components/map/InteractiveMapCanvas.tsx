@@ -80,10 +80,12 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
 }) => {
   const navigate = useNavigate();
   const [segments, setSegments] = useState<RoadSegment[]>(MOCK_ROAD_SEGMENTS);
+  const [complaints, setComplaints] = useState<any[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'high' | 'med_low' | 'pothole' | 'lighting'>('all');
   const [selectedSegment, setSelectedSegment] = useState<RoadSegment | null>(() => {
     return MOCK_ROAD_SEGMENTS.find((s) => s.id === initialSelectedId) || MOCK_ROAD_SEGMENTS[0];
   });
+  const [selectedComplaint, setSelectedComplaint] = useState<any | null>(null);
   const [mapSearch, setMapSearch] = useState('');
   
   const defaultCenter = { lat: 25.4358, lng: 81.8463 }; // Prayagraj
@@ -127,7 +129,21 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
         setSegments([]);
       }
     };
+
+    const fetchComplaints = async () => {
+      try {
+        const res = await apiClient.get('/complaints');
+        const data = res.data?.data;
+        if (data && Array.isArray(data)) {
+          setComplaints(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch complaints:', err);
+      }
+    };
+
     fetchSegments();
+    fetchComplaints();
   }, [isAuthorityMode]);
 
   // Filter items
@@ -146,8 +162,34 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
     return true;
   });
 
+  const filteredComplaints = complaints.filter((c) => {
+    if (!c.location?.coordinates) return false;
+    
+    // Hide resolved complaints from the active risk map
+    if (c.status === 'RESOLVED') return false;
+
+    if (mapSearch.trim()) {
+      const searchStr = mapSearch.toLowerCase();
+      if (!c.defect_type?.toLowerCase().includes(searchStr) &&
+          !c.location?.address?.toLowerCase().includes(searchStr)) {
+        return false;
+      }
+    }
+    if (activeFilter === 'pothole') return c.defect_type === 'POTHOLE';
+    if (activeFilter === 'lighting') return c.defect_type === 'BROKEN_STREETLIGHT';
+    if (activeFilter === 'high') return c.severity === 'CRITICAL' || c.severity === 'HIGH';
+    if (activeFilter === 'med_low') return c.severity === 'MEDIUM' || c.severity === 'LOW';
+    return true;
+  });
+
   const handleMarkerClick = (segment: RoadSegment) => {
+    setSelectedComplaint(null);
     setSelectedSegment(segment);
+  };
+
+  const handleComplaintClick = (comp: any) => {
+    setSelectedSegment(null);
+    setSelectedComplaint(comp);
   };
 
   const handleReportAction = () => {
@@ -182,6 +224,37 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
     });
   };
 
+  const createComplaintIcon = (comp: any) => {
+    const defect = comp.defect_type ? comp.defect_type.replace(/_/g, " ") : "DEFECT";
+    let emoji = "⚠️";
+    let color = "#ff5252";
+    
+    switch(comp.defect_type) {
+      case 'POTHOLE': emoji = '🕳️'; color = '#ff5252'; break;
+      case 'BROKEN_STREETLIGHT': emoji = '💡'; color = '#ffa000'; break;
+      case 'GARBAGE': emoji = '🗑️'; color = '#8bc34a'; break;
+      case 'DRAINAGE': emoji = '💧'; color = '#00daf3'; break;
+      default: emoji = '⚠️'; color = '#ff5252'; break;
+    }
+
+    return L.divIcon({
+      className: 'custom-complaint-icon group',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full animate-ping" style="background-color: ${color}4d"></div>
+          <div class="w-7 h-7 rounded-full border border-white shadow-lg flex items-center justify-center text-[14px]" style="background-color: ${color}; box-shadow: 0 0 10px ${color}">
+            ${emoji}
+          </div>
+          <div class="absolute -bottom-7 left-1/2 -translate-x-1/2 bg-[#151b2b]/95 border px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap shadow-lg pointer-events-none" style="border-color: ${color}66; color: ${color}">
+            ${defect}
+          </div>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+  };
+
   return (
     <div className={`relative w-full ${heightClass} bg-[#080e1d] rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none`}>
       <MapContainer 
@@ -205,6 +278,17 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
             icon={createCustomIcon(seg)}
             eventHandlers={{
               click: () => handleMarkerClick(seg),
+            }}
+          />
+        ))}
+
+        {filteredComplaints.map((comp) => (
+          <Marker
+            key={comp._id}
+            position={[comp.location.coordinates[1], comp.location.coordinates[0]]}
+            icon={createComplaintIcon(comp)}
+            eventHandlers={{
+              click: () => handleComplaintClick(comp),
             }}
           />
         ))}
@@ -281,7 +365,7 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
               type="text"
               value={mapSearch}
               onChange={(e) => setMapSearch(e.target.value)}
-              placeholder="Search area (e.g. Andheri, Powai)..."
+              placeholder="Search area (e.g. Civil Lines, Naini)..."
               className="bg-transparent text-xs text-white placeholder:text-[#8c90a1] w-full focus:outline-none font-mono"
             />
             {mapSearch && (
@@ -377,6 +461,72 @@ export const InteractiveMapCanvas: React.FC<InteractiveMapCanvasProps> = ({
               <Plus className="w-4 h-4 stroke-[3]" />
               Report Hazard Here
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Panel Bottom Sheet for Complaints */}
+      {selectedComplaint && (
+        <div className="absolute bottom-4 inset-x-4 max-w-xl mx-auto z-[1000] transform transition-all duration-300 ease-out pointer-events-none">
+          <div className="w-full rounded-2xl p-5 shadow-2xl relative overflow-hidden bg-[#242a3a]/90 backdrop-blur-2xl border border-white/15 pointer-events-auto">
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedComplaint(null)}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-[#2f3445] flex items-center justify-center text-[#c2c6d8] hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+                {selectedComplaint.photo_url ? (
+                  <img 
+                    src={selectedComplaint.photo_url.startsWith('http') ? selectedComplaint.photo_url : `/${selectedComplaint.photo_url}`} 
+                    alt="Defect" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/sample_images/pothole_critical_deep.jpg'; }}
+                  />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-[#ff5252]" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base md:text-lg font-bold text-white mb-0.5">
+                  {selectedComplaint.defect_type ? selectedComplaint.defect_type.replace(/_/g, " ") : "REPORTED DEFECT"}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#00daf3] shadow-[0_0_8px_#00daf3]" />
+                  <span className="font-mono text-xs text-[#00daf3]">
+                    {selectedComplaint.location?.address || 'Unknown Location'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Data Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-[#0d1322]/60 rounded-xl p-3 border border-white/5">
+                <div className="flex items-center gap-1.5 mb-1 text-[#8c90a1]">
+                  <Shield className="w-3.5 h-3.5 text-[#8c90a1]" />
+                  <span className="font-mono text-[10px] uppercase">Severity</span>
+                </div>
+                <div className="text-sm font-bold text-[#ff5252]">
+                  {selectedComplaint.severity || 'UNKNOWN'}
+                </div>
+              </div>
+
+              <div className="bg-[#0d1322]/60 rounded-xl p-3 border border-white/5">
+                <div className="flex items-center gap-1.5 mb-1 text-[#8c90a1]">
+                  <Activity className="w-3.5 h-3.5 text-[#8c90a1]" />
+                  <span className="font-mono text-[10px] uppercase">Status</span>
+                </div>
+                <div className="text-sm font-semibold text-white">
+                  {selectedComplaint.status || 'REPORTED'}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
