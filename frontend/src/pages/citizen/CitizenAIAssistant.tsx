@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, Send, Sparkles, Shield, MapPin, AlertCircle, ArrowRight, User, Camera } from 'lucide-react';
 import { sendCitizenChatMessage, getCitizenChatHistory, ChatbotMessage } from '../../services/aiChatbotService';
+import { authService } from '../../services/authService';
 
 export const CitizenAIAssistant: React.FC = () => {
+  const session = authService.getSession();
+  const userName = session?.user?.name || 'Citizen';
+
   const [messages, setMessages] = useState<ChatbotMessage[]>([
     {
       sender: 'BOT',
-      text: 'Hello Aarav! I am Prahari Citizen AI Safety Assistant. Ask me about road conditions, flood-prone choke points, active pothole repair zones, or safe commute routes.',
+      text: `Hello ${userName}! I am Prahari Citizen AI Safety Assistant. Ask me about road conditions, flood-prone choke points, active pothole repair zones, or safe commute routes.`,
       created_at: new Date().toISOString()
     },
   ]);

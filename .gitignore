@@ -1,4 +1,4 @@
-﻿# ==== Environment & secrets ====
+# ==== Environment & secrets ====
 .env
 .env.local
 .env.*.local
@@ -44,3 +44,16 @@ coverage
 *.lcov
 .nyc_output
 .npm-cache/
+
+# ==== Uploads ====
+frontend/public/uploads/
+backend/uploads/
+
+# ==== Temporary Scripts and Test Files ====
+osrm_routes.json
+route_test.json
+points.txt
+backend/test-modules.js
+backend/test_apis.js
+backend/updateUser.js
+routing-engine/

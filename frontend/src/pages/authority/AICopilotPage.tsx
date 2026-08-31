@@ -14,8 +14,12 @@ import {
   Cpu,
 } from 'lucide-react';
 import { executeCopilotQuery, CopilotQueryResponse } from '../../services/aiCopilotService';
+import { authService } from '../../services/authService';
 
 export const AICopilotPage: React.FC = () => {
+  const session = authService.getSession();
+  const userName = session?.user?.name || 'Commander';
+
   const [messages, setMessages] = useState<
     { role: 'user' | 'assistant'; text: string; data?: CopilotQueryResponse }[]
   >(() => {
@@ -30,7 +34,7 @@ export const AICopilotPage: React.FC = () => {
     return [
       {
         role: 'assistant',
-        text: `Hello Commander Srivastava. Prahari AI Copilot is online with active data info from 14,208 network nodes. \n\nI can analyze multi-factor risk indexes, simulate asphalt allocation for school zones, explain priority priority check scoring, or generate operational deployment directives. How may I assist you today?`,
+        text: `Hello ${userName}. Prahari AI Copilot is online with active data info from 14,208 network nodes. \n\nI can analyze multi-factor risk indexes, simulate asphalt allocation for school zones, explain priority priority check scoring, or generate operational deployment directives. How may I assist you today?`,
       },
     ];
   });

@@ -91,7 +91,7 @@ export const MOCK_USERS: Record<UserRole, AuthUser> = {
   citizen: {
     id: 'USR-CITZ-04',
     employeeId: 'CITIZEN-IN-889',
-    name: 'Praveen Jat',
+    name: 'Krishna Kumar',
     email: 'citizen.user@gmail.com',
     role: 'citizen',
     department: 'Civilian Infrastructure Sentinel',
