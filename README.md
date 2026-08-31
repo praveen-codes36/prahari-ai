@@ -29,7 +29,6 @@
 14. [Usage Instructions & Demo Flow](#usage-instructions--demo-flow)
 15. [Challenges Faced & Workarounds](#challenges-faced--workarounds)
 16. [Future Scope & Vision](#future-scope--vision)
-17. [Meet the Team](#meet-the-team)
 
 ---
 
