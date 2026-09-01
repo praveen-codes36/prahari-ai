@@ -1,4 +1,4 @@
-# PRAHARI-AI — AI Sentinel for Safer Roads
+# 🛡️ PRAHARI-AI — AI Sentinel for Safer Roads 🚔
 > A Unified, Autonomous AI-Powered Ecosystem Connecting Citizens, Municipal Authorities, and Emergency Services
 
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -13,30 +13,30 @@
 ---
 
 ## 📑 Table of Contents
-1. [Executive Summary](#executive-summary)
-2. [Hackathon Details](#hackathon-details)
-3. [The Core Problem](#the-core-problem)
-4. [Our Innovative Solution (USP)](#our-innovative-solution-usp)
-5. [Key Product Modules](#key-product-modules)
-6. [System Architecture & Data Flow](#system-architecture--data-flow)
-7. [Comprehensive Tech Stack](#comprehensive-tech-stack)
-8. [Machine Learning & AI Engine Deep-Dive](#machine-learning--ai-engine-deep-dive)
-9. [Project Directory Structure](#project-directory-structure)
-10. [End-to-End System Workflow](#end-to-end-system-workflow)
-11. [Detailed API Reference](#detailed-api-reference)
-12. [Installation & Local Setup Guide](#installation--local-setup-guide)
-13. [Environment Variables Configuration](#environment-variables-configuration)
-14. [Usage Instructions & Demo Flow](#usage-instructions--demo-flow)
-15. [Challenges Faced & Workarounds](#challenges-faced--workarounds)
-16. [Future Scope & Vision](#future-scope--vision)
+1. 🚀 [Executive Summary](#1-executive-summary)
+2. 🏆 [Hackathon Details](#2-hackathon-details)
+3. ⚠️ [The Core Problem](#3-the-core-problem)
+4. 💡 [Our Innovative Solution (USP)](#4-our-innovative-solution-usp)
+5. 🧩 [Key Product Modules](#5-key-product-modules)
+6. 🏗️ [System Architecture & Data Flow](#6-system-architecture--data-flow)
+7. 💻 [Comprehensive Tech Stack](#7-comprehensive-tech-stack)
+8. 🧠 [Machine Learning & AI Engine Deep-Dive](#8-machine-learning--ai-engine-deep-dive)
+9. 📂 [Project Directory Structure](#9-project-directory-structure)
+10. 🔄 [End-to-End System Workflow](#10-end-to-end-system-workflow)
+11. 🔌 [Detailed API Reference](#11-detailed-api-reference)
+12. ⚙️ [Installation & Local Setup Guide](#12-installation--local-setup-guide)
+13. 🔐 [Environment Variables Configuration](#13-environment-variables-configuration)
+14. 🕹️ [Usage Instructions & Demo Flow](#14-usage-instructions--demo-flow)
+15. 🚧 [Challenges Faced & Workarounds](#15-challenges-faced--workarounds)
+16. 🔭 [Future Scope & Vision](#16-future-scope--vision)
 
 ---
 
-## 1. Executive Summary
+## 🚀 1. Executive Summary
 
 **Prahari-AI** is a smart, autonomous, tri-layered intelligence platform designed to eliminate the gaps in urban road safety and maintenance. By crowdsourcing road hazard data from citizens, instantly triaging it through advanced Computer Vision, forecasting the long-term deterioration risk using Machine Learning, and dynamically reweighting emergency routing graphs, Prahari-AI ensures that authorities fix the right problems at the right time, and ambulances always take the safest and fastest route.
 
-## 2. Hackathon Details
+## 🏆 2. Hackathon Details
 
 - **Event**: Internal Smart India Hackathon (SIH) 2026
 - **Team Name**: COMMAND + WIN
@@ -45,7 +45,7 @@
 
 ---
 
-## 3. The Core Problem
+## ⚠️ 3. The Core Problem
 
 India has the highest road accident fatality rate in the world. Two major factors contribute to this:
 
@@ -56,7 +56,7 @@ Presently, infrastructure condition and accident risks are treated in isolated s
 
 ---
 
-## 4. Our Innovative Solution (USP)
+## 💡 4. Our Innovative Solution (USP)
 
 Prahari-AI breaks down the silos by connecting civic reporting directly to emergency response. 
 
@@ -67,7 +67,7 @@ Prahari-AI breaks down the silos by connecting civic reporting directly to emerg
 
 ---
 
-## 5. Key Product Modules
+## 🧩 5. Key Product Modules
 
 ### 👤 Citizen Module
 - **Live Defect Reporting**: Capture photos of road issues.
@@ -88,7 +88,7 @@ Prahari-AI breaks down the silos by connecting civic reporting directly to emerg
 
 ---
 
-## 6. System Architecture & Data Flow
+## 🏗️ 6. System Architecture & Data Flow
 
 Prahari-AI utilizes a microservices-inspired architecture, decoupling the heavy machine learning workloads from the real-time Node.js I/O API.
 
@@ -131,7 +131,7 @@ graph TD
 
 ---
 
-## 7. Comprehensive Tech Stack
+## 💻 7. Comprehensive Tech Stack
 
 ### Frontend (Client Layer)
 - **Framework**: React.js 19 with Vite (TypeScript/JavaScript).
@@ -156,7 +156,7 @@ graph TD
 
 ---
 
-## 8. Machine Learning & AI Engine Deep-Dive
+## 🧠 8. Machine Learning & AI Engine Deep-Dive
 
 The true brains of Prahari-AI live in the `ml-model/src` directory. Here is what each script does:
 
@@ -169,7 +169,7 @@ The true brains of Prahari-AI live in the `ml-model/src` directory. Here is what
 
 ---
 
-## 9. Project Directory Structure
+## 📂 9. Project Directory Structure
 
 ```text
 prahari-ai/
@@ -208,7 +208,7 @@ prahari-ai/
 
 ---
 
-## 10. End-to-End System Workflow
+## 🔄 10. End-to-End System Workflow
 
 To visualize how the pieces connect, follow a standard "Pothole to Repair" lifecycle:
 
@@ -223,7 +223,7 @@ To visualize how the pieces connect, follow a standard "Pothole to Repair" lifec
 
 ---
 
-## 11. Detailed API Reference
+## 🔌 11. Detailed API Reference
 
 Below is a subset of the extensive REST APIs provided by the Node.js backend.
 
@@ -253,7 +253,7 @@ Below is a subset of the extensive REST APIs provided by the Node.js backend.
 
 ---
 
-## 12. Installation & Local Setup Guide
+## ⚙️ 12. Installation & Local Setup Guide
 
 Follow these steps precisely to spin up the entire ecosystem on your local machine.
 
@@ -318,7 +318,7 @@ uvicorn server:app --reload
 
 ---
 
-## 13. Environment Variables Configuration
+## 🔐 13. Environment Variables Configuration
 
 Do not commit your real `.env` files. Use the provided `.env.example` templates.
 
@@ -349,7 +349,7 @@ VITE_MAPBOX_TOKEN=your_token
 
 ---
 
-## 14. Usage Instructions & Demo Flow
+## 🕹️ 14. Usage Instructions & Demo Flow
 
 To demonstrate the full power of Prahari-AI to hackathon judges, follow this script:
 
@@ -362,7 +362,7 @@ To demonstrate the full power of Prahari-AI to hackathon judges, follow this scr
 
 ---
 
-## 15. Challenges Faced & Workarounds
+## 🚧 15. Challenges Faced & Workarounds
 
 Building a multi-layered distributed AI system in a short timeframe presented several technical hurdles:
 
@@ -375,7 +375,7 @@ Building a multi-layered distributed AI system in a short timeframe presented se
 
 ---
 
-## 16. Future Scope & Vision
+## 🔭 16. Future Scope & Vision
 
 Prahari-AI is designed to be the foundational operating system for Smart City roadways. Future additions include:
 
