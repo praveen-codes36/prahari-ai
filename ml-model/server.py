@@ -202,4 +202,4 @@ async def copilot_query_api(payload: dict = Body(...)):
 
 if __name__ == "__main__":
     print("Starting Prahari AI ML Server on http://127.0.0.1:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
