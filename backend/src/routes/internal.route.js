@@ -22,7 +22,7 @@ import { detectDefectInternal, checkDuplicateInternal } from "../controllers/com
 import { protect } from "../middlewares/auth.middleware.js";
 import multer from "multer";
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() }); // in-memory: files pushed to Cloudinary, nothing written to disk
 
 // Route: /api/internal/detect-defect
 router.route("/detect-defect").post(protect, upload.single("photo"), detectDefectInternal);

@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, File, UploadFile, Body
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -201,5 +202,6 @@ async def copilot_query_api(payload: dict = Body(...)):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
-    print("Starting Prahari AI ML Server on http://127.0.0.1:8000")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Starting Prahari AI ML Server on http://0.0.0.0:{port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

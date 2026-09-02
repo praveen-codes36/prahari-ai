@@ -18,7 +18,7 @@ import {
 import { protect } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" }); 
+const upload = multer({ storage: multer.memoryStorage() }); // in-memory: files pushed to Cloudinary, nothing written to disk
 
 // ==========================================
 // CITIZEN ROUTES

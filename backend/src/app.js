@@ -1,5 +1,10 @@
 import express from "express"
 import cors from "cors"
+import path from "path"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 import authRoutes from './routes/auth.routes.js';
 import accidentsRouter from "./routes/accidents.route.js"
@@ -69,5 +74,21 @@ app.use("/api/simulation", simulationRouter)
 app.use("/api", repairPriorityRouter)
 app.use("/api/maintenance", maintenanceRouter)
 app.use("/api/copilot", copilotRouter)
+
+// ---- Serve the built frontend (optional single-origin deployment) ----
+// If a `frontend-dist` folder exists next to this backend (copied there during
+// the build step — see DEPLOYMENT.md), serve it and fall back to index.html for
+// any non-API route so React Router's client-side routing works. This lets the
+// whole app run from one URL/origin, which sidesteps CORS and lets the frontend's
+// existing relative "/api" calls work unchanged in production. If the folder
+// isn't present (e.g. you're hosting the frontend separately on Vercel/Netlify),
+// this simply does nothing.
+const frontendDistPath = path.join(__dirname, "..", "frontend-dist")
+app.use(express.static(frontendDistPath))
+app.get(/^(?!\/api|\/uploads|\/sample_images).*/, (req, res, next) => {
+  res.sendFile(path.join(frontendDistPath, "index.html"), (err) => {
+    if (err) next()
+  })
+})
 
 export default app

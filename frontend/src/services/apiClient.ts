@@ -1,8 +1,14 @@
 import axios from 'axios';
 import { authService } from './authService';
 
+// Same-origin deployments (frontend served by the backend, or a dev proxy) can
+// leave VITE_API_BASE_URL unset and keep using the relative "/api" path. If the
+// frontend is hosted separately (e.g. Vercel) from the backend (e.g. Render),
+// set VITE_API_BASE_URL to the backend's full URL, e.g. https://your-backend.onrender.com/api
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

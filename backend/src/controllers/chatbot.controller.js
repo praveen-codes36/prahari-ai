@@ -4,9 +4,9 @@ import { ApiError } from "../utils/api-error.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
 import FormData from "form-data";
-import fs from "fs";
 import { Complaint } from "../models/complaint.model.js";
 import { detectDefectViaML } from "./complaints.controller.js";
+import { uploadBufferToCloudinary } from "../utils/cloudinary.js";
 
 // Helper to get GoogleGenerativeAI client dynamically
 function getGenAI() {
@@ -15,11 +15,11 @@ function getGenAI() {
     return new GoogleGenerativeAI(apiKey);
 }
 
-// Helper function to call the ML model with a local file path
-async function callMLModel(filePath) {
+// Helper function to call the ML model with an in-memory buffer
+async function callMLModel(fileBuffer) {
     try {
         const form = new FormData();
-        form.append("file", fs.createReadStream(filePath), "attachment.jpg");
+        form.append("file", fileBuffer, "attachment.jpg");
 
         const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
         const mlResponse = await axios.post(`${ML_SERVICE_URL}/predict`, form, {
@@ -60,17 +60,18 @@ export const sendChatbotMessage = async (req, res) => {
     try {
         const { user_id, text, channel = "CITIZEN" } = req.body;
         let attachment_url = req.body.attachment_url || null;
-        let filePath = null;
+        let fileBuffer = null;
 
         if (req.file) {
-            filePath = req.file.path;
-            attachment_url = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+            fileBuffer = req.file.buffer;
+            const cloudinaryResult = await uploadBufferToCloudinary(req.file.buffer, "prahari-ai/chatbot");
+            attachment_url = cloudinaryResult.secure_url;
         }
 
         if (!user_id) {
             throw new ApiError(400, "user_id is required");
         }
-        if (!text && !attachment_url && !filePath) {
+        if (!text && !attachment_url && !fileBuffer) {
             throw new ApiError(400, "Message must contain text or an attachment");
         }
 
@@ -92,8 +93,8 @@ export const sendChatbotMessage = async (req, res) => {
         // Prepare context for Gemini
         let mlContext = "";
         let mlResult = null;
-        if (filePath) {
-            mlResult = await callMLModel(filePath);
+        if (fileBuffer) {
+            mlResult = await callMLModel(fileBuffer);
             if (mlResult) {
                 mlContext = `[SYSTEM CONTEXT: The user uploaded an image. Our ML model detected a ${mlResult.defect_type || 'unknown defect'} with a severity of ${mlResult.severity || 'unknown'} (confidence: ${mlResult.confidence_score ? Math.round(mlResult.confidence_score * 100) : 'unknown'}%). Please inform the user and ask for location confirmation.]\n\n`;
             }

@@ -1,10 +1,10 @@
 import axios from "axios";
 import FormData from "form-data";
-import fs from "fs";
 import { Complaint } from "../models/complaint.model.js";
 import { Department } from "../models/Department.model.js";
 import { FieldTeam } from "../models/field_team.model.js";
 import { triggerRecalculation } from "./orchestration.controller.js";
+import { uploadBufferToCloudinary } from "../utils/cloudinary.js";
 
 const MAP_DEFECT_TO_DEPARTMENT = {
   POTHOLE: "Road",
@@ -38,11 +38,11 @@ const buildRepairPlan = (severity, mlResult = {}) => {
 // ==========================================
 // INTERNAL HELPERS
 // ==========================================
-export const detectDefectViaML = async (filePath) => {
+export const detectDefectViaML = async (fileBuffer, filename = "photo.jpg") => {
   const ML_SERVICE_BASE = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
   const endpoint = ML_SERVICE_BASE.endsWith("/predict") ? ML_SERVICE_BASE : `${ML_SERVICE_BASE}/predict`;
   const formData = new FormData();
-  formData.append("file", fs.createReadStream(filePath));
+  formData.append("file", fileBuffer, filename);
   try {
     const response = await axios.post(endpoint, formData, { headers: formData.getHeaders(), timeout: 30000 });
     return { available: true, ...response.data };
@@ -97,7 +97,10 @@ export const createComplaint = async (req, res) => {
 
     if (!photoFile || !longitude || !latitude) return res.status(400).json({ message: "Photo and GPS required." });
 
-    const mlResult = await detectDefectViaML(photoFile.path);
+    const [mlResult, cloudinaryResult] = await Promise.all([
+      detectDefectViaML(photoFile.buffer, photoFile.originalname),
+      uploadBufferToCloudinary(photoFile.buffer, "prahari-ai/complaints"),
+    ]);
     const aiAvailable = mlResult.available !== false;
     const raw_defect = aiAvailable ? (mlResult.defect_type || "OTHER") : "OTHER";
     const defect_type = MAP_ML_LABEL_TO_ENUM[raw_defect] || raw_defect || "OTHER";
@@ -126,7 +129,7 @@ export const createComplaint = async (req, res) => {
 
     const newComplaint = await Complaint.create({
       citizen_id: req.user.id || req.user._id,
-      photo_url: photoFile.path,
+      photo_url: cloudinaryResult.secure_url,
       defect_type,
       severity,
       confidence_score,
@@ -405,17 +408,26 @@ export const submitRepairVerification = async (req, res) => {
 
     const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
     const formData = new FormData();
-    formData.append("file", fs.createReadStream(afterPhoto.path));
+    formData.append("file", afterPhoto.buffer, afterPhoto.originalname);
 
     let verification;
+    let repairPhotoUrl = null;
     try {
-      const mlRes = await axios.post(`${ML_SERVICE_URL}/verify_repair`, formData, {
-        headers: formData.getHeaders(),
-      });
+      const [mlRes, cloudinaryResult] = await Promise.all([
+        axios.post(`${ML_SERVICE_URL}/verify_repair`, formData, { headers: formData.getHeaders() }),
+        uploadBufferToCloudinary(afterPhoto.buffer, "prahari-ai/repairs"),
+      ]);
       verification = mlRes.data;
+      repairPhotoUrl = cloudinaryResult.secure_url;
     } catch (mlErr) {
       console.warn("ML verify_repair unavailable, defaulting to manual review:", mlErr.message);
       verification = { repaired: false, residual_confidence: null, message: "ML service unavailable — flagged for manual review." };
+      try {
+        const cloudinaryResult = await uploadBufferToCloudinary(afterPhoto.buffer, "prahari-ai/repairs");
+        repairPhotoUrl = cloudinaryResult.secure_url;
+      } catch (uploadErr) {
+        console.warn("Cloudinary upload also failed:", uploadErr.message);
+      }
     }
 
     const newStatus = verification.repaired ? "RESOLVED" : "INSPECTION";
@@ -423,7 +435,7 @@ export const submitRepairVerification = async (req, res) => {
     const complaint = await Complaint.findByIdAndUpdate(
       req.params.id,
       {
-        repair_photo_url: afterPhoto.path,
+        repair_photo_url: repairPhotoUrl,
         repair_verified: !!verification.repaired,
         repair_verification_notes: verification.message || "",
         status: newStatus,
@@ -458,7 +470,7 @@ export const submitRepairVerification = async (req, res) => {
 export const detectDefectInternal = async (req, res) => {
     try {
         if(!req.file) return res.status(400).json({message: "Photo required"});
-        const mlResult = await detectDefectViaML(req.file.path);
+        const mlResult = await detectDefectViaML(req.file.buffer, req.file.originalname);
         res.status(mlResult.available === false ? 503 : 200).json({ success: mlResult.available !== false, data: mlResult });
     } catch(error) {
         res.status(500).json({ message: "ML Service Error" });

@@ -3,7 +3,7 @@ import multer from "multer";
 import { sendChatbotMessage, getChatbotHistory } from "../controllers/chatbot.controller.js";
 
 const router = Router();
-const upload = multer({ dest: "uploads/" }); 
+const upload = multer({ storage: multer.memoryStorage() }); // in-memory: files pushed to Cloudinary, nothing written to disk
 
 // Route: /api/chatbot/citizen/message
 router.route("/message").post(upload.single("photo"), sendChatbotMessage);
