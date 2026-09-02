@@ -38,9 +38,6 @@ app.use(cors({
   allowedHeaders: ["Authorization", "Content-Type"]
 }))
 
-app.get('/', (req, res) => {
-  res.send('Welcome to Prahari-AI')
-})
 
 // ---- Route mounting ----
 
